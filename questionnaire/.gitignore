@@ -1,0 +1,4 @@
+.Rproj.user
+.Rhistory
+# Answers collected while running the app locally.
+data/responses.csv

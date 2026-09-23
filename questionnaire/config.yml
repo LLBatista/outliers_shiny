@@ -1,0 +1,7 @@
+default:
+  rhino_log_level: !expr Sys.getenv("RHINO_LOG_LEVEL", "INFO")
+  rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", NA)
+  # Where the questionnaire reads its product options from.
+  products_file: "data/products.csv"
+  # Where submitted answers are appended.
+  responses_file: "data/responses.csv"
