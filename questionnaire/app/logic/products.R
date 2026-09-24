@@ -12,11 +12,11 @@ read_products <- function(path) {
   product_id <- read.csv(path, stringsAsFactors = FALSE, strip.white = TRUE)
   if (!all(c("product", "lot") %in% names(product_id))) {
     stop("The products file must have the columns 'product' and 'lot'.")
-    }
+  }
   product_id
 }
 
-#' Lots available for one product 
+#' Lots available for one product
 #' @export
 lots_for_product <- function(product_id, assay) {
   sort(unique(product_id$lot[product_id$product == assay]))

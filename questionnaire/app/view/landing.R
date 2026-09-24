@@ -3,7 +3,7 @@ box::use(
 )
 
 #' @export
-ui <- function(id){
+ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$div(
     class = "landing-card",
@@ -18,23 +18,33 @@ ui <- function(id){
 }
 
 #' @export
-server <- function(id, people, experiment_type){
+server <- function(id, people, experiment_type) {
   shiny$moduleServer(id, function(input, output, session) {
     shiny$updateSelectInput(session,
-                            'name', 
-                            choices = c('Choose your name...' = "", 
-                                        people))
+      "name",
+      choices = c(
+        "Choose your name..." = "",
+        people
+      )
+    )
     shiny$updateSelectInput(session,
-                            "experiment_type",
-                            choices = c("Choose an experiment..." = "",
-                                        experiment_type))
-    
+      "experiment_type",
+      choices = c(
+        "Choose an experiment..." = "",
+        experiment_type
+      )
+    )
+
     shiny$eventReactive(input$start, {
       shiny$validate(
-        shiny$need(input$name != "", 
-                   "Please choose your name"),
-        shiny$need(input$experiment_type != "", 
-                   "Please choose your experiment type.")
+        shiny$need(
+          input$name != "",
+          "Please choose your name"
+        ),
+        shiny$need(
+          input$experiment_type != "",
+          "Please choose your experiment type."
+        )
       )
       list(
         name = input$name,

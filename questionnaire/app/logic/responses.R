@@ -35,6 +35,6 @@ save_response <- function(response, path) {
 load_responses <- function(path) {
   if (!file.exists(path)) {
     return(new_response(character(0), character(0), as.Date(character(0)), as.POSIXct(character(0))))
-     }
+  }
   read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
 }
