@@ -3,19 +3,21 @@ box::use(
   utils[read.csv],
 )
 
-#' Read the list of products from a CSV file.
-#'
-#' The file must have a column called `product`, with one product per row.
-#' Returns a sorted character vector without blanks or duplicates.
+#' Read the products and their lots from a CSV file.
 #' @export
 read_products <- function(path) {
   if (!file.exists(path)) {
     stop("Products file not found: ", path)
   }
-  products <- read.csv(path, stringsAsFactors = FALSE)
-  if (!"product" %in% names(products)) {
-    stop("The products file must have a column called 'product'.")
-  }
-  values <- trimws(products$product)
-  sort(unique(values[!is.na(values) & values != ""]))
+  product_id <- read.csv(path, stringsAsFactors = FALSE, strip.white = TRUE)
+  if (!all(c("product", "lot") %in% names(product_id))) {
+    stop("The products file must have the columns 'product' and 'lot'.")
+    }
+  product_id
+}
+
+#' Lots available for one product 
+#' @export
+lots_for_product <- function(product_id, assay) {
+  sort(unique(product_id$lot[product_id$product == assay]))
 }

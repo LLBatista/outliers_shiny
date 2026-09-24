@@ -5,3 +5,7 @@ default:
   products_file: "data/products.csv"
   # Where submitted answers are appended.
   responses_file: "data/responses.csv"
+  # users working
+  users_file: "data/users.csv"
+  # assays available
+  assays_file: "data/assays.csv"
