@@ -1,6 +1,7 @@
 # Entry point of the app: puts the modules together.
 box::use(
   config,
+  bslib,
   shiny,
 )
 box::use(
@@ -16,6 +17,15 @@ box::use(
 ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$fluidPage(
+    theme = bslib$bs_theme(
+      version = 5,
+      primary = "#2f6f73",   # buttons and accents: try your own colour!
+      bg = "#f4f6f8",        # page background
+      fg = "#1f2933",        # text colour
+      base_font = bslib$font_collection("system-ui", "-apple-system", 
+                                        "Segoe UI", "Roboto", "sans-serif")
+    ),
+    title = "Product usage questionnaire",
     shiny$tabsetPanel(
       id = ns("pages"),
       type = "hidden",
@@ -24,10 +34,16 @@ ui <- function(id) {
       shiny$tabPanel(
         "questionnaire",
         shiny$div(
-          class = "questionnaire",
-          shiny$titlePanel("Product usage questionnaire"),
-          questionnaire$ui(ns("form")),
-          responses_table$ui(ns("responses"))
+          class = "questionnaire-page",
+          shiny$div(
+            class = "page-header",
+            shiny$h2("Product usage questionnaire"),
+            shiny$uiOutput(ns("experiment_info"))      # 👈 the chips go here
+          ),
+          shiny$fluidRow(
+            shiny$column(5, questionnaire$ui(ns("form"))),        # left: form
+            shiny$column(7, responses_table$ui(ns("responses")))  # right: table
+          )
         )
       )
     )
@@ -47,6 +63,16 @@ server <- function(id) {
     experiment <- landing$server("landing", 
                                  people = people, 
                                  experiment_type = experiment_type)
+    
+    output$experiment_info <- shiny$renderUI({
+      info <- experiment()
+      shiny$div(
+        class = "info-chips",
+        shiny$span(class = "chip", shiny$icon("user"), info$name),
+        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", shiny$icon("flask"), info$experiment_type)
+      )
+    })
     
     shiny$observeEvent(experiment(), {
       shiny$updateTabsetPanel(session, 

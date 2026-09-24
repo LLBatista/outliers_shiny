@@ -9,21 +9,28 @@ box::use(
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$wellPanel(
-    shiny$h3("Which product did you use?"),
+  shiny$div(
+    class = "app-card",
+    shiny$h3(shiny$icon("box-open"), 
+             "Which product did you use?"),
     shiny$selectInput(
       ns("product"),
       label = "Product",
       choices = NULL
     ),
-    shiny$selectInput(ns('lot'), label = 'Lot', choices = NULL) ,
+    shiny$selectInput(ns('lot'), 
+                      label = 'Lot', 
+                      choices = NULL) ,
     shiny$dateInput(
       ns("date"),
       label = "Date of use",
       value = Sys.Date(),
       max = Sys.Date()
     ),
-    shiny$actionButton(ns("submit"), "Submit", class = "btn-primary")
+    shiny$actionButton(ns("submit"), 
+                       "Submit", 
+                       class = "btn-primary", 
+                       icon = shiny$icon("check"))
   )
 }
 

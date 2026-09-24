@@ -6,8 +6,9 @@ box::use(
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$tagList(
-    shiny$h3("Answers so far"),
+  shiny$div(
+    class = "app-card",
+    shiny$h3(shiny$icon("table-list"), "Answers so far"),
     shiny$tableOutput(ns("table"))
   )
 }
@@ -16,6 +17,6 @@ ui <- function(id) {
 #' @export
 server <- function(id, responses) {
   shiny$moduleServer(id, function(input, output, session) {
-    output$table <- shiny$renderTable(responses())
+    output$table <- shiny$renderTable(responses(), width = "100%", striped = TRUE)
   })
 }
