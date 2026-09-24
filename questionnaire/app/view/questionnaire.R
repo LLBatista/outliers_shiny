@@ -25,12 +25,6 @@ ui <- function(id) {
       label = "Lot",
       choices = NULL
     ),
-    shiny$dateInput(
-      ns("date"),
-      label = "Date of use",
-      value = Sys.Date(),
-      max = Sys.Date()
-    ),
     shiny$actionButton(ns("submit"),
       "Submit",
       class = "btn-primary",
@@ -63,9 +57,8 @@ server <- function(id, product_id) {
       shiny$validate(
         shiny$need(input$product != "", "Please choose a product."),
         shiny$need(shiny$isTruthy(input$lot), "Please choose a lot."),
-        shiny$need(length(input$date) == 1, "Please choose a date.")
       )
-      list(product = input$product, lot = input$lot, date = input$date)
+      list(product = input$product, lot = input$lot)
     })
   })
 }

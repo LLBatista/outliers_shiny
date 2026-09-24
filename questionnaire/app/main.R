@@ -18,6 +18,7 @@ box::use(
 ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$fluidPage(
+    # to add to css file 
     theme = bslib$bs_theme(
       version = 5,
       primary = "#2f6f73", # buttons and accents: try your own colour!
@@ -28,7 +29,7 @@ ui <- function(id) {
         "Segoe UI", "Roboto", "sans-serif"
       )
     ),
-    title = "Product usage questionnaire",
+    title = "Lab Documentation Prototype",
     shiny$tabsetPanel(
       id = ns("pages"),
       type = "hidden",
@@ -42,7 +43,7 @@ ui <- function(id) {
           class = "questionnaire-page",
           shiny$div(
             class = "page-header",
-            shiny$h2("Product usage questionnaire"),
+            shiny$h2("Lab Documentation Prototype"),
             shiny$uiOutput(ns("experiment_info")) # 👈 the chips go here
           ),
           shiny$fluidRow(
