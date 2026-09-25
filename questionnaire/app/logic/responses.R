@@ -5,8 +5,11 @@ box::use(
 
 #' Build a one-row data frame with a single answer.
 #' @export
-new_response <- function(product, lot, submitted_at = Sys.time()) {
+new_response <- function(experiment_date, user, experiment, product, lot) {
   data.frame(
+    date = format(as.Date(experiment_date), "%Y-%m-%d"),
+    user = user,
+    experiment = experiment,
     product = product,
     lot = lot,
     stringsAsFactors = FALSE
@@ -32,7 +35,11 @@ save_response <- function(response, path) {
 #' @export
 load_responses <- function(path) {
   if (!file.exists(path)) {
-    return(new_response(character(0), character(0)))
+    return(new_response(character(0), 
+                        character(0), 
+                        character(0), 
+                        character(0), 
+                        character(0)))
   }
   read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
 }
