@@ -121,7 +121,7 @@ server <- function(id) {
     shiny$observeEvent(daily_submission(), {
       check <- daily_submission()
       info <- experiment()
-      row <- new_daily_check(
+      row <- new_daily_checks(
         date = info$experiment_date,
         user = info$name,
         instrument = check$instrument,

@@ -4,25 +4,25 @@ box::use(
 
 
 #' @export
-ui <- function(id){
+ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$div(
     class = "app-card",
     shiny$h3(shiny$icon("clipboard-check"), "First run of the day"),
-    shiny$selectInput(ns("instrument"), 
-                      "Instrument", 
-                      choices = NULL, width = "100%"),
-    shiny$selectInput(ns("controls"), 
-                      "Controls used", 
-                      choices = NULL, 
-                      multiple = TRUE, width = "100%"),
+    shiny$selectInput(ns("instrument"), "Instrument", choices = NULL, width = "100%"),
+    shiny$selectInput(ns("controls"), "Controls used", choices = NULL, multiple = TRUE, width = "100%"),
     shiny$radioButtons(ns("controls_valid"), "Were the controls valid?",
-                       choices = c("Yes" = "yes", "No" = "no"),
-                       selected= character(0), inline = TRUE)
-  )
-  shiny$actionButton(ns("save"), "Save", 
-                     class = "btn-primary", 
-                     icon = shiny$icon("check"))
+                       choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
+    ),
+    shiny$conditionalPanel(                     # 👈 this was missing too
+      condition = "input.controls_valid == 'no'",
+      ns = ns,
+      shiny$radioButtons(ns("rerun_valid"), "Was the rerun valid?",
+                         choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
+      )
+    ),
+    shiny$actionButton(ns("save"), "Save", class = "btn-primary", icon = shiny$icon("check"))
+  )   # 👈 the div closes at the very end
 }
 
 #' @export
