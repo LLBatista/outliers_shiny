@@ -3,9 +3,15 @@ default:
   rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", NA)
   # Where the questionnaire reads its product options from.
   products_file: "data/products.csv"
-  # Where submitted answers are appended.
-  responses_file: "data/responses.csv"
   # users working
   users_file: "data/users.csv"
   # assays available
   assays_file: "data/assays.csv"
+  # instrument
+  instruments_file: "data/instruments.csv"
+  # controls:
+  controls_file: "data/controls.csv"
+  
+  # Where submitted answers are appended.
+  responses_file: "data/responses.csv"
+  daily_checks_file: "data/daily_checks.csv"

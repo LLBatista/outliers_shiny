@@ -12,8 +12,14 @@ ui <- function(id) {
     shiny$p(class = "subtitle", "Tell us about your experiment to get started."),
     shiny$selectInput(ns("name"), "Your name", choices = NULL, width = "100%"),
     shiny$dateInput(ns("experiment_date"), "Experiment date", value = Sys.Date(), width = "100%"),
-    shiny$selectInput(ns("experiment_type"), "Type of experiment", choices = NULL, width = "100%"),
-    shiny$actionButton(ns("start"), "Start", class = "btn-primary", icon = shiny$icon("arrow-right"))
+    shiny$radioButtons(ns("first_run"), "Is this the first run of the day?",
+                       choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
+    ),
+    shiny$conditionalPanel(
+      condition = "input.first_run == 'no'",
+      ns = ns,
+      shiny$selectInput(ns("experiment_type"), "Type of experiment", choices = NULL, width = "100%")
+    ),    shiny$actionButton(ns("start"), "Start", class = "btn-primary", icon = shiny$icon("arrow-right"))
   )
 }
 
@@ -37,6 +43,11 @@ server <- function(id, people, experiment_type) {
 
     shiny$eventReactive(input$start, {
       shiny$validate(
+        shiny$need(shiny$isTruthy(input$first_run), "Please say if this is the first run of the day."),
+        shiny$need(
+          input$first_run == "yes" || input$experiment_type != "",
+          "Please choose your experiment type."
+        ),
         shiny$need(
           input$name != "",
           "Please choose your name"

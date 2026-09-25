@@ -9,6 +9,8 @@ box::use(
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/responses[load_responses, new_response, save_response],
+  app/logic/daily_checks[load_daily_checks, new_daily_checks],
+  app/view/daily_check,
   app/view/landing,
   app/view/insert_product,
   app/view/responses_table,
@@ -38,6 +40,19 @@ ui <- function(id) {
       shiny$tabPanel(
         "landing",
         landing$ui(ns("landing"))
+      ),
+      shiny$tabPanel(
+        "daily_check",
+        shiny$div(
+          class = "questionnaire-page",
+          shiny$div(
+            class = "page-header",
+            shiny$h2("Lab Documentation Prototype"),
+            shiny$uiOutput(ns("daily_info"))
+          ),
+          daily_check$ui(ns("daily_check")),
+          responses_table$ui(ns("daily_checks_table"))    # 👈 the table module, reused!
+        )
       ),
       shiny$tabPanel(
         "questionnaire",
@@ -86,10 +101,50 @@ server <- function(id) {
       )
     })
 
+    output$daily_info <- shiny$renderUI({
+      info <- experiment()
+      shiny$div(
+        class = "info-chips",
+        shiny$span(class = "chip", shiny$icon("user"), info$name),
+        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", shiny$icon("sun"), "First run of the day")
+      )
+    })
+    
+    daily_checks_file <- config$get("daily_checks_file")
+    daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
+    daily_submission <- daily_check$server("daily check",
+                                           instruments = read_options(config$get("instruments_file"), "instrument"),
+                                           controls = read_options(config$get("controls_file"), "control")
+                                    )
+    
+    shiny$observeEvent(daily_submission(), {
+      check <- daily_submission()
+      info <- experiment()
+      row <- new_daily_check(
+        date = info$experiment_date,
+        user = info$name,
+        instrument = check$instrument,
+        controls = check$controls,
+        controls_valid = check$controls_valid,
+        rerun_valid = check$rerun_valid
+      )
+      save_response(row, daily_checks_file)
+      daily_checks(rbind(daily_checks(), row))
+      shiny$showNotification("Daily check saved.", type = "message")
+    })
+    
+    responses_table$server("daily_checks_table", responses = daily_checks)
+    
+    
     shiny$observeEvent(experiment(), {
       info <- experiment()
-      shiny$updateTabsetPanel(session, "experiment_pages", selected = info$experiment_type)
-      shiny$updateTabsetPanel(session, "pages", selected = "questionnaire")
+      if (info$first_run) {
+        shiny$updateTabsetPanel(session, "pages", selected = "daily_check")
+      } else {
+        shiny$updateTabsetPanel(session, "experiment_pages", selected = info$experiment_type)
+        shiny$updateTabsetPanel(session, "pages", selected = "questionnaire")
+      }
     })
     
 
@@ -100,7 +155,6 @@ server <- function(id) {
     
     save_answer <- function(answer) {
       info <- experiment()
-      answer <- submission()
       response <- new_response(
         experiment_date = info$experiment_date,
         user = info$name,
