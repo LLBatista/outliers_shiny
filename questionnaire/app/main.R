@@ -3,8 +3,9 @@
 # How the app flows:
 #   1. Landing page: the user picks their name, the date and whether this is the
 #      first run of the day (if not, they also pick the experiment).
-#   2a. First run of the day -> "daily_check" page (instrument + control lots),
-#       saved to data/daily_checks.csv (one check per instrument per day).
+#   2a. First run of the day -> "daily_check" page: instrument, then positive and
+#       negative control, step by step. Saved to data/daily_checks.csv
+#       (one check per instrument per day).
 #   2b. Otherwise -> "questionnaire" page, showing the page of the chosen
 #       experiment, saved to data/responses.csv.
 
@@ -15,7 +16,9 @@ box::use(
 )
 
 box::use(
-  app/logic/daily_checks[already_checked, load_daily_checks, new_daily_checks, read_controls],
+  app/logic/daily_checks[
+    already_checked, load_daily_checks, new_daily_checks, read_controls, read_instruments
+  ],
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/responses[load_responses, new_response, save_response],
@@ -70,8 +73,7 @@ ui <- function(id) {
             shiny$h2("Lab Documentation Prototype"),
             shiny$uiOutput(ns("daily_info")) # chips: user, date, "first run"
           ),
-          daily_check$ui(ns("daily_check")),
-          responses_table$ui(ns("daily_checks_table"))
+          daily_check$ui(ns("daily_check"))
         )
       ),
 
@@ -120,7 +122,7 @@ server <- function(id) {
 
     people <- read_options(config$get("users_file"), "user")
     experiment_types <- read_options(config$get("assays_file"), "assay")
-    instruments <- read_options(config$get("instruments_file"), "instrument")
+    instruments <- read_instruments(config$get("instruments_file")) # with software/firmware version
     controls <- read_controls(config$get("controls_file")) # columns: control, lot
     products <- read_products(config$get("products_file")) # columns: product, lot
 
@@ -174,38 +176,43 @@ server <- function(id) {
     # All saved daily checks; starts with what is already in the CSV.
     daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
 
-    # `daily_submission()` holds the form values after the user clicks Save.
-    daily_submission <- daily_check$server("daily_check",
-      instruments = instruments,
-      controls = controls
-    )
+    # Was this instrument already checked on the date chosen on the landing page?
+    is_already_checked <- function(instrument) {
+      already_checked(daily_checks(), experiment()$experiment_date, instrument)
+    }
 
-    # Save the check, unless this instrument was already checked on this date.
-    shiny$observeEvent(daily_submission(), {
-      check <- daily_submission() # from the daily check form
+    # Saves one finished daily check; returns TRUE if it was saved.
+    save_daily_check <- function(check) {
       info <- experiment() # from the landing page
-      if (already_checked(daily_checks(), info$experiment_date, check$instrument)) {
+      if (is_already_checked(check$instrument)) {
         shiny$showNotification(
           paste("A daily check for", check$instrument, "was already saved on this date."),
           type = "error"
         )
-      } else {
-        row <- new_daily_checks(
-          date = info$experiment_date,
-          user = info$name,
-          instrument = check$instrument,
-          positive_lot = check$positive_lot,
-          negative_lot = check$negative_lot,
-          controls_valid = check$controls_valid,
-          rerun_valid = check$rerun_valid
-        )
-        save_response(row, daily_checks_file)
-        daily_checks(rbind(daily_checks(), row))
-        shiny$showNotification("Daily check saved.", type = "message")
+        return(FALSE)
       }
-    })
+      row <- new_daily_checks(
+        date = info$experiment_date,
+        user = info$name,
+        instrument = check$instrument,
+        software_version = check$software_version,
+        firmware_version = check$firmware_version,
+        positive = check$positive,
+        negative = check$negative
+      )
+      save_response(row, daily_checks_file)
+      daily_checks(rbind(daily_checks(), row))
+      TRUE
+    }
 
-    responses_table$server("daily_checks_table", responses = daily_checks)
+    # The step-by-step form. It uses the two functions above to check and save.
+    daily_check$server("daily_check",
+      instruments = instruments,
+      controls = controls,
+      is_already_checked = is_already_checked,
+      save_check = save_daily_check,
+      start = experiment
+    )
 
     # ------------------------------------------------------------------------
     # 5. Experiments

@@ -1,62 +1,77 @@
-# Plain R code (no Shiny): building and saving questionnaire answers.
+# Plain R code (no Shiny): instruments, controls and the daily first-run checks.
 box::use(
-  utils[read.csv, write.table],
+  stats[setNames],
+  utils[read.csv],
 )
 
-
-
-#' Read the controls and lots from csv files 
+#' Read the instruments and their software / firmware versions from a CSV file.
 #' @export
-read_controls <- function(path){
+read_instruments <- function(path) {
   read.csv(path, stringsAsFactors = FALSE, strip.white = TRUE)
 }
 
-#' Read the lots for each control 
+#' The software and firmware version of one instrument.
+#' @export
+instrument_versions <- function(instruments, instrument) {
+  row <- instruments[instruments$instrument == instrument, ]
+  list(
+    software_version = row$software_version[1],
+    firmware_version = row$firmware_version[1]
+  )
+}
+
+#' Read the controls and their lots from a CSV file.
+#' @export
+read_controls <- function(path) {
+  read.csv(path, stringsAsFactors = FALSE, strip.white = TRUE)
+}
+
+#' Lots available for one control.
 #' @export
 lots_for_control <- function(controls, control) {
   sort(unique(controls$lot[controls$control == control]))
 }
 
-#' Build a one-row data frame with a single answer.
+# The columns of data/daily_checks.csv, in order.
+daily_check_columns <- c(
+  "date", "user", "instrument", "software_version", "firmware_version",
+  "positive_lot", "positive_valid", "positive_rerun_valid",
+  "negative_lot", "negative_valid", "negative_rerun_valid"
+)
+
+#' Build a one-row data frame with one daily check.
+#'
+#' `positive` and `negative` are lists with `lot`, `valid` and `rerun_valid`.
 #' @export
-new_daily_checks <- function(date, 
-                            user, 
-                            instrument, 
-                            positive_lot,
-                            negative_lot,
-                            controls_valid, 
-                            rerun_valid) {
+new_daily_checks <- function(date, user, instrument, software_version, firmware_version,
+                             positive, negative) {
   data.frame(
     date = format(as.Date(date), "%Y-%m-%d"),
     user = user,
     instrument = instrument,
-    positive_lot = positive_lot,
-    negative_lot = negative_lot,
-    controls_valid = controls_valid,
-    rerun_valid = rerun_valid,
+    software_version = software_version,
+    firmware_version = firmware_version,
+    positive_lot = positive$lot,
+    positive_valid = positive$valid,
+    positive_rerun_valid = positive$rerun_valid,
+    negative_lot = negative$lot,
+    negative_valid = negative$valid,
+    negative_rerun_valid = negative$rerun_valid,
     stringsAsFactors = FALSE
   )
 }
 
-#' Read all saved daily checks 
+#' Read all saved daily checks (an empty table if there are none yet).
 #' @export
-load_daily_checks <- function(path){
-  if(!file.exists(path)){
-    return(data.frame(
-      date = character(0), user = character(0), 
-      instrument = character(0),
-      positive_lot = character(0), 
-      negative_lot = character(0),
-      controls_valid = character(0), 
-      rerun_valid = character(0)
-    ))
+load_daily_checks <- function(path) {
+  if (!file.exists(path)) {
+    empty_columns <- rep(list(character(0)), length(daily_check_columns))
+    return(as.data.frame(setNames(empty_columns, daily_check_columns)))
   }
-  read.csv(path, 
-           stringsAsFactors = FALSE, 
-           colClasses = "character")
+  read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
 }
 
-#' Has this user already saved a daily check on this date?
+#' Has this instrument already had a daily check on this date?
 #' @export
 already_checked <- function(checks, date, instrument) {
   any(checks$date == format(as.Date(date), "%Y-%m-%d") & checks$instrument == instrument)

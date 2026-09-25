@@ -110,3 +110,108 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
   font-weight: 600;
   margin-bottom: 0.75rem;
 }
+// ---- Daily check: step by step ----
+.daily-check {
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+// Progress bar: "1 Instrument  2 Positive control  3 Negative control"
+.step-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid #e5e9ee;
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #8a94a3;
+    font-size: 0.9rem;
+  }
+
+  .step-marker {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    background: #edf0f3;
+  }
+
+  .current {
+    color: #1f2933;
+    font-weight: 600;
+
+    .step-marker {
+      background: $primary;
+      color: white;
+    }
+  }
+
+  .done .step-marker {
+    background: $primary-soft;
+    color: $primary;
+  }
+}
+
+.step-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+
+  i {
+    color: $primary;
+    margin-right: 0.4rem;
+  }
+}
+
+// Software / firmware version of the chosen instrument
+.version-box {
+  display: flex;
+  gap: 2rem;
+  background: $primary-soft;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+
+  span {
+    display: block;
+    font-size: 0.8rem;
+    color: #5b6b7a;
+  }
+}
+
+// Back / Next buttons: Back on the left, the main button on the right
+.step-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  .btn:not(.btn-primary) {
+    margin-right: auto;
+  }
+}
+
+// Summary after saving
+.done-summary dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.25rem;
+  margin-bottom: 1rem;
+
+  dt {
+    font-weight: 600;
+  }
+
+  dd {
+    margin: 0;
+  }
+}
