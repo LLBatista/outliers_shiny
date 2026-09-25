@@ -10,14 +10,17 @@ box::use(
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$fluidRow(
-    shiny$column(5, insert_product$ui(ns("product"))),   # 👈 reused module
-    shiny$column(
-      7,
+  # Form and measurements side by side on wide screens (tablet in landscape),
+  # one above the other on narrower ones (tablet held upright).
+  shiny$div(
+    class = "row",
+    shiny$div(class = "col-lg-5", insert_product$ui(ns("product"))),
+    shiny$div(
+      class = "col-lg-7",
       shiny$div(
         class = "app-card",
         shiny$h3(shiny$icon("chart-line"), "Linearity measurements"),
-        shiny$p("Coming soon: the fields for this experiment.")
+        shiny$p(class = "placeholder-text", "Coming soon: the fields for this experiment.")
       )
     )
   )

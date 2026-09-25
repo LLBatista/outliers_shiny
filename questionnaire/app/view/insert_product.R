@@ -1,4 +1,4 @@
-# Shiny module: the form where the user picks a product and a date.
+# Shiny module: the form where the user picks a product and its lot.
 box::use(
   shiny,
 )
@@ -12,53 +12,58 @@ ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$div(
     class = "app-card",
-    shiny$h3(
-      shiny$icon("box-open"),
-      "Which product did you use?"
-    ),
-    shiny$selectInput(
-      ns("product"),
-      label = "Product",
-      choices = NULL
-    ),
-    shiny$selectInput(ns("lot"),
-      label = "Lot",
-      choices = NULL
-    ),
-    shiny$actionButton(ns("submit"),
-      "Submit",
-      class = "btn-primary",
-      icon = shiny$icon("check")
-    )
+    shiny$h3(shiny$icon("box-open"), "Which product did you use?"),
+    shiny$selectInput(ns("product"), "Product", choices = NULL, width = "100%"),
+    shiny$selectInput(ns("lot"), "Lot", choices = NULL, width = "100%"),
+    shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
+    shiny$actionButton(ns("submit"), "Submit", class = "btn-primary", icon = shiny$icon("check"))
   )
 }
 
 #' Server part of the form.
 #'
-#' `products` is a character vector with the options to show.
+#' `product_id` is a table with the columns product and lot.
 #' Returns a reactive that holds the latest submitted answer.
 #' @export
 server <- function(id, product_id) {
   shiny$moduleServer(id, function(input, output, session) {
-    shiny$updateSelectInput(
-      session,
-      "product",
+    shiny$updateSelectInput(session, "product",
       choices = c("Choose a product..." = "", unique(product_id$product))
     )
 
+    # Only the lots of the chosen product.
     shiny$observeEvent(input$product, {
-      shiny$updateSelectInput(
-        session, "lot",
-        choices = lots_for_product(product_id, input$product)
+      lots <- if (input$product == "") character(0) else lots_for_product(product_id, input$product)
+      shiny$updateSelectInput(session, "lot",
+        choices = c("Choose a lot..." = "", lots),
+        selected = ""
       )
     })
 
-    shiny$eventReactive(input$submit, {
+    # Error messages: shown after a click on Submit, hidden again when an answer changes.
+    show_message <- shiny$reactiveVal(FALSE)
+    shiny$observeEvent(input$submit, show_message(TRUE))
+    shiny$observeEvent(list(input$product, input$lot), show_message(FALSE), ignoreInit = TRUE)
+
+    submission <- shiny$eventReactive(input$submit, {
       shiny$validate(
         shiny$need(input$product != "", "Please choose a product."),
-        shiny$need(shiny$isTruthy(input$lot), "Please choose a lot."),
+        shiny$need(shiny$isTruthy(input$lot), "Please choose a lot.")
       )
       list(product = input$product, lot = input$lot)
     })
+
+    output$message <- shiny$renderText({
+      if (show_message()) submission()
+      ""
+    })
+
+    # After a successful submit, empty the form so the same answer isn't saved twice.
+    shiny$observeEvent(submission(), {
+      shiny$updateSelectInput(session, "product", selected = "")
+      shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = ""), selected = "")
+    })
+
+    submission
   })
 }

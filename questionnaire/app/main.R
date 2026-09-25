@@ -33,6 +33,21 @@ box::use(
 # UI
 # ============================================================================
 
+# The header of the second pages: title, "Start over" button and the chips.
+page_header <- function(info_id, start_over_id) {
+  shiny$div(
+    class = "page-header",
+    shiny$div(
+      class = "page-header-row",
+      shiny$h2("Lab Documentation Prototype"),
+      shiny$actionButton(start_over_id, "Start over",
+        class = "btn-outline-secondary", icon = shiny$icon("rotate-left")
+      )
+    ),
+    shiny$uiOutput(info_id)
+  )
+}
+
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -67,11 +82,10 @@ ui <- function(id) {
       shiny$tabPanel(
         "daily_check",
         shiny$div(
-          class = "questionnaire-page",
-          shiny$div(
-            class = "page-header",
-            shiny$h2("Lab Documentation Prototype"),
-            shiny$uiOutput(ns("daily_info")) # chips: user, date, "first run"
+          class = "questionnaire-page narrow",
+          page_header(
+            info_id = ns("daily_info"), # chips: user, date, "first run"
+            start_over_id = ns("start_over_daily")
           ),
           daily_check$ui(ns("daily_check"))
         )
@@ -82,10 +96,9 @@ ui <- function(id) {
         "questionnaire",
         shiny$div(
           class = "questionnaire-page",
-          shiny$div(
-            class = "page-header",
-            shiny$h2("Lab Documentation Prototype"),
-            shiny$uiOutput(ns("experiment_info")) # chips: user, date, experiment
+          page_header(
+            info_id = ns("experiment_info"), # chips: user, date, experiment
+            start_over_id = ns("start_over_experiment")
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
           shiny$tabsetPanel(
@@ -146,6 +159,15 @@ server <- function(id) {
         shiny$updateTabsetPanel(session, "pages", selected = "questionnaire")
       }
     })
+
+    # "Start over" (on both second pages) goes back to the landing page, where
+    # the user can change their name, the date or the experiment.
+    shiny$observeEvent(list(input$start_over_daily, input$start_over_experiment),
+      {
+        shiny$updateTabsetPanel(session, "pages", selected = "landing")
+      },
+      ignoreInit = TRUE
+    )
 
     # ------------------------------------------------------------------------
     # 3. Page headers: the "chips" under the title

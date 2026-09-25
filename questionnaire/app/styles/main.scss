@@ -1,8 +1,13 @@
 // to run: rhino::build_sass()
-// ---- Colours used in more than one place ----
+// ---- Colours and sizes used in more than one place ----
 $primary: #2f6f73;
 $primary-soft: #e3efef;
+$text: #1f2933;
+$text-muted: #5f6b78; // secondary text; at least 4.5:1 on white
+$border: #c9d1d9;
+$error: #b42318;
 $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
+$touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe with gloves)
 
 // ---- Cards: white boxes with rounded corners and a soft shadow ----
 .landing-card,
@@ -14,7 +19,8 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
   margin-bottom: 1.5rem;
 
   h3 {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
+    font-weight: 600;
     margin-bottom: 1.25rem;
 
     i {
@@ -43,7 +49,7 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
   }
 
   .subtitle {
-    color: #6b7785;
+    color: $text-muted;
     margin-bottom: 1.75rem;
   }
 
@@ -54,22 +60,37 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
   .btn-primary {
     width: 100%;
     margin-top: 0.5rem;
-    padding: 0.65rem;
   }
 }
 
-// ---- Questionnaire page ----
+// ---- Second pages (daily check and experiments) ----
 .questionnaire-page {
   max-width: 1100px;
   margin: 2rem auto;
+  padding: 0 0.75rem;
+
+  // The daily check is a single column: header and card share its width.
+  &.narrow {
+    max-width: 664px;
+  }
 }
 
 .page-header {
   margin-bottom: 1.5rem;
 
+  // Title on the left, "Start over" on the right
+  .page-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
   h2 {
     font-weight: 600;
-    margin-bottom: 0.75rem;
+    font-size: 1.6rem;
+    margin: 0;
   }
 }
 
@@ -95,27 +116,124 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 // Labels a bit bolder, everywhere
 .control-label {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
+  margin-bottom: 0.4rem;
 }
 
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+// ---- Touch-friendly fields and buttons ----
 // Input boxes white (the theme would make them the same grey as the page)
 .form-control,
 .selectize-input {
   background: white !important;
+  min-height: $touch;
+  font-size: 1rem;
+  border-color: $border;
 }
 
+.selectize-input {
+  display: flex !important;
+  align-items: center;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+
+  input::placeholder {
+    color: $text-muted;
+  }
+}
+
+// Dropdown options: easy to hit with a finger
+.selectize-dropdown .option {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.btn {
+  min-height: $touch;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  font-weight: 500;
+}
+
+// Yes / No answers as large tappable pills
+.shiny-input-radiogroup .shiny-options-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+
+  .radio-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: $touch;
+    min-width: 7rem;
+    margin: 0;
+    padding: 0 1.25rem;
+    border: 1px solid $border;
+    border-radius: 10px;
+    background: white;
+    font-size: 1rem;
+    cursor: pointer;
+
+    // Bootstrap places the circle outside its label; keep it inside the pill.
+    input {
+      position: static;
+      float: none;
+      margin: 0 !important;
+      width: 1.2rem;
+      height: 1.2rem;
+      accent-color: $primary;
+    }
+
+    &:has(input:checked) {
+      border-color: $primary;
+      background: $primary-soft;
+      color: $primary;
+      font-weight: 600;
+    }
+
+    &:has(input:focus-visible) {
+      outline: 3px solid rgba($primary, 0.35);
+      outline-offset: 2px;
+    }
+  }
+}
+
+// ---- Messages and empty states ----
 // Messages from validate()/need() shown under a form
 .form-message .shiny-output-error-validation {
-  color: #b42318;
+  color: $error;
   font-weight: 600;
   margin-bottom: 0.75rem;
 }
-// ---- Daily check: step by step ----
-.daily-check {
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
+
+.empty-state,
+.placeholder-text {
+  color: $text-muted;
+  margin: 0;
 }
+
+// Tables: dates and numbers line up
+.table {
+  font-variant-numeric: tabular-nums;
+}
+
+// ---- Browser details in the app's colours ----
+::selection {
+  background: $primary-soft;
+  color: $text;
+}
+
+.btn:focus-visible,
+.form-control:focus,
+.selectize-input.focus {
+  box-shadow: 0 0 0 3px rgba($primary, 0.3) !important;
+  border-color: $primary !important;
+}
+// ---- Daily check: step by step ----
 
 // Progress bar: "1 Instrument  2 Positive control  3 Negative control"
 .step-progress {
@@ -130,8 +248,8 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #8a94a3;
-    font-size: 0.9rem;
+    color: $text-muted;
+    font-size: 0.95rem;
   }
 
   .step-marker {
@@ -146,7 +264,7 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
   }
 
   .current {
-    color: #1f2933;
+    color: $text;
     font-weight: 600;
 
     .step-marker {
@@ -163,6 +281,7 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 
 .step-title {
   font-size: 1.05rem;
+  margin-top: 0.25rem;
   font-weight: 600;
   margin-bottom: 1rem;
 
@@ -183,8 +302,8 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 
   span {
     display: block;
-    font-size: 0.8rem;
-    color: #5b6b7a;
+    font-size: 0.85rem;
+    color: $text-muted;
   }
 }
 
@@ -192,8 +311,8 @@ $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 .step-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
 
   .btn:not(.btn-primary) {
     margin-right: auto;
