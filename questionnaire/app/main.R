@@ -123,8 +123,11 @@ server <- function(id) {
     shiny$observeEvent(daily_submission(), {
       check <- daily_submission()
       info <- experiment()
-      if (already_checked(daily_checks(), info$experiment_date, info$name)) {
-        shiny$showNotification("You already saved a daily check for this date.", type = "error")
+      if (already_checked(daily_checks(), info$experiment_date, check$instrument)) {
+        shiny$showNotification(
+          paste("A daily check for", check$instrument, "was already saved on this date."),
+          type = "error"
+        )
       } else {
         row <- new_daily_checks(
           date = info$experiment_date,

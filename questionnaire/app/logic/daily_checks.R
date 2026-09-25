@@ -58,6 +58,6 @@ load_daily_checks <- function(path){
 
 #' Has this user already saved a daily check on this date?
 #' @export
-already_checked <- function(checks, date, user) {
-  any(checks$date == format(as.Date(date), "%Y-%m-%d") & checks$user == user)
+already_checked <- function(checks, date, instrument) {
+  any(checks$date == format(as.Date(date), "%Y-%m-%d") & checks$instrument == instrument)
 }

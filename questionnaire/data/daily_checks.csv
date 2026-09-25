@@ -1,4 +1,3 @@
-"date","user","instrument","controls","controls_valid","rerun_valid"
-"2026-09-25","Max Mustermann","Analyzer 02","Negative Control; Positive Control","yes","not needed"
-"2026-09-25","Max Mustermann","Analyzer 02","Negative Control; Positive Control","no","yes"
-"2026-09-25","Max Mustermann","Analyzer 02","Negative Control; Positive Control","no","no"
+"date","user","instrument","positive_lot","negative_lot","controls_valid","rerun_valid"
+"2026-09-25","Leticia Batista","Analyzer 02","A1","A2","yes","not needed"
+"2026-09-25","Leticia Batista","Analyzer 01","A1","A2","yes","not needed"
