@@ -1,97 +1,53 @@
-# Shiny module: the first-run-of-the-day check (instrument and control lots).
 box::use(
   shiny,
-  shiny.fluent[
-    ChoiceGroup.shinyInput, Dropdown.shinyInput, PrimaryButton.shinyInput, Stack, Text
-  ],
 )
 
 box::use(
   app/logic/daily_checks[lots_for_control],
-  app/logic/fluent_helpers[as_options],
 )
 
-# Options for the yes/no questions, shown side by side.
-yes_no <- list(list(key = "yes", text = "Yes"), list(key = "no", text = "No"))
-side_by_side <- list(flexContainer = list(display = "flex", gap = "24px"))
-
 #' @export
-ui <- function(id, instruments, controls) {
+ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$div(
     class = "app-card",
-    Stack(
-      tokens = list(childrenGap = 16),
-      Text(
-        variant = "large", class = "card-title",
-        shiny$icon("clipboard-check"), "First run of the day"
-      ),
-      Dropdown.shinyInput(
-        ns("instrument"),
-        label = "Instrument",
-        placeholder = "Choose an instrument...",
-        options = as_options(instruments)
-      ),
-      # The two lot dropdowns side by side
-      Stack(
-        horizontal = TRUE,
-        tokens = list(childrenGap = 16),
-        shiny$div(
-          class = "half-width",
-          Dropdown.shinyInput(
-            ns("positive_lot"),
-            label = "Positive control lot",
-            placeholder = "Choose a lot...",
-            options = as_options(lots_for_control(controls, "Positive Control"))
-          )
-        ),
-        shiny$div(
-          class = "half-width",
-          Dropdown.shinyInput(
-            ns("negative_lot"),
-            label = "Negative control lot",
-            placeholder = "Choose a lot...",
-            options = as_options(lots_for_control(controls, "Negative Control"))
-          )
-        )
-      ),
-      ChoiceGroup.shinyInput(
-        ns("controls_valid"),
-        label = "Were the controls valid?",
-        options = yes_no,
-        styles = side_by_side
-      ),
-      # Only asked when the controls were not valid.
-      shiny$conditionalPanel(
-        condition = "input.controls_valid == 'no'",
-        ns = ns,
-        ChoiceGroup.shinyInput(
-          ns("rerun_valid"),
-          label = "Was the rerun valid?",
-          options = yes_no,
-          styles = side_by_side
-        )
-      ),
-      shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
-      shiny$div(
-        PrimaryButton.shinyInput(
-          ns("save"),
-          text = "Save",
-          iconProps = list(iconName = "CheckMark")
-        )
+    shiny$h3(shiny$icon("clipboard-check"), "First run of the day"),
+    shiny$selectInput(ns("instrument"), "Instrument", choices = NULL, width = "100%"),
+    shiny$selectInput(ns("positive_lot"), "Positive control lot", choices = NULL, width = "100%"),
+    shiny$selectInput(ns("negative_lot"), "Negative control lot", choices = NULL, width = "100%"),
+    shiny$radioButtons(ns("controls_valid"), "Were the controls valid?",
+                       choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
+    ),
+    shiny$conditionalPanel(
+      condition = "input.controls_valid == 'no'",
+      ns = ns,
+      shiny$radioButtons(ns("rerun_valid"), "Was the rerun valid?",
+                         choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
       )
-    )
+    ),
+    shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
+    shiny$actionButton(ns("save"), "Save", class = "btn-primary", icon = shiny$icon("check"))
   )
 }
 
 #' @export
-server <- function(id) {
+server <- function(id, instruments, controls) {
   shiny$moduleServer(id, function(input, output, session) {
+    shiny$updateSelectInput(session, "instrument",
+                            choices = c("Choose an instrument..." = "", instruments)
+    )
+    shiny$updateSelectInput(session, "positive_lot",
+                            choices = c("Choose a lot..." = "", lots_for_control(controls, "Positive Control"))
+    )
+    shiny$updateSelectInput(session, "negative_lot",
+                            choices = c("Choose a lot..." = "", lots_for_control(controls, "Negative Control"))
+    )
+    
     submission <- shiny$eventReactive(input$save, {
       shiny$validate(
-        shiny$need(shiny$isTruthy(input$instrument), "Please choose an instrument."),
-        shiny$need(shiny$isTruthy(input$positive_lot), "Please choose the positive control lot."),
-        shiny$need(shiny$isTruthy(input$negative_lot), "Please choose the negative control lot."),
+        shiny$need(input$instrument != "", "Please choose an instrument."),
+        shiny$need(input$positive_lot != "", "Please choose the positive control lot."),
+        shiny$need(input$negative_lot != "", "Please choose the negative control lot."),
         shiny$need(shiny$isTruthy(input$controls_valid), "Please say if the controls were valid."),
         shiny$need(
           !identical(input$controls_valid, "no") || shiny$isTruthy(input$rerun_valid),
@@ -106,13 +62,12 @@ server <- function(id) {
         rerun_valid = if (input$controls_valid == "yes") "not needed" else input$rerun_valid
       )
     })
-
-    # Shows the validate() messages under the form.
+    
     output$message <- shiny$renderText({
       submission()
       ""
     })
-
+    
     submission
   })
 }

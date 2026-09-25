@@ -9,10 +9,9 @@
 #       experiment, saved to data/responses.csv.
 
 box::use(
+  bslib,
   config,
-  htmltools[htmlDependency],
   shiny,
-  shiny.fluent[Text],
 )
 
 box::use(
@@ -28,57 +27,26 @@ box::use(
 )
 
 # ============================================================================
-# Options for the dropdowns
-# ============================================================================
-# Read once when the app starts. Fluent dropdowns get their options directly in
-# the UI (updating them from the server right at start-up does not work).
-people <- read_options(config$get("users_file"), "user")
-experiment_types <- read_options(config$get("assays_file"), "assay")
-instruments <- read_options(config$get("instruments_file"), "instrument")
-controls <- read_controls(config$get("controls_file")) # columns: control, lot
-products <- read_products(config$get("products_file")) # columns: product, lot
-
-# ============================================================================
 # UI
 # ============================================================================
-
-# Nothing in the app is loaded from the internet (it runs on a local server):
-# - `FabricConfig` points Fluent's own fonts and icons to the app instead of
-#   Microsoft's servers. It must load before shiny.fluent.
-# - static/js/fluent_icons.js draws the Fluent icons we use with Font Awesome.
-#   It must load after shiny.fluent.
-fluent_offline_config <- function() {
-  htmlDependency(
-    name = "fluent-offline-config",
-    version = "1.0.0",
-    src = c(href = "static"),
-    head = paste0(
-      "<script>window.FabricConfig = ",
-      "{ iconBaseUrl: 'static/', fontBaseUrl: 'static' };</script>"
-    )
-  )
-}
-
-fluent_font_awesome_icons <- function() {
-  htmlDependency(
-    name = "fluent-font-awesome-icons",
-    version = "1.0.0",
-    src = c(href = "static/js"),
-    script = "fluent_icons.js"
-  )
-}
 
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
 
-  # What shiny.fluent's fluentPage() does, minus the stylesheet it loads from the internet.
-  shiny$tags$body(
-    class = "ms-Fabric",
-    fluent_offline_config(),
-    # Bootstrap is used by the hidden tabsets to switch pages.
-    shiny$bootstrapLib(),
-    shiny$tags$head(shiny$tags$title("Lab Documentation Prototype")),
+  shiny$fluidPage(
+    title = "Lab Documentation Prototype",
+
+    # Colours and font for the whole app (card styles live in app/styles/main.scss)
+    theme = bslib$bs_theme(
+      version = 5,
+      primary = "#2f6f73", # buttons and accents
+      bg = "#f4f6f8", # page background
+      fg = "#1f2933", # text colour
+      base_font = bslib$font_collection(
+        "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"
+      )
+    ),
 
     # The pages of the app. `type = "hidden"` hides the tab buttons:
     # the server decides which page is shown (see "Routing" below).
@@ -89,7 +57,7 @@ ui <- function(id) {
       # --- Page 1: landing -------------------------------------------------
       shiny$tabPanel(
         "landing",
-        landing$ui(ns("landing"), people, experiment_types)
+        landing$ui(ns("landing"))
       ),
 
       # --- Page 2a: first run of the day -----------------------------------
@@ -99,11 +67,11 @@ ui <- function(id) {
           class = "questionnaire-page",
           shiny$div(
             class = "page-header",
-            Text(variant = "xxLarge", "Lab Documentation Prototype", block = TRUE),
+            shiny$h2("Lab Documentation Prototype"),
             shiny$uiOutput(ns("daily_info")) # chips: user, date, "first run"
           ),
-          daily_check$ui(ns("daily_check"), instruments, controls),
-          responses_table$ui(ns("daily_checks_table"), title = "Daily checks so far")
+          daily_check$ui(ns("daily_check")),
+          responses_table$ui(ns("daily_checks_table"))
         )
       ),
 
@@ -114,7 +82,7 @@ ui <- function(id) {
           class = "questionnaire-page",
           shiny$div(
             class = "page-header",
-            Text(variant = "xxLarge", "Lab Documentation Prototype", block = TRUE),
+            shiny$h2("Lab Documentation Prototype"),
             shiny$uiOutput(ns("experiment_info")) # chips: user, date, experiment
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
@@ -123,36 +91,48 @@ ui <- function(id) {
             type = "hidden",
             shiny$tabPanel(
               "Detection Capability",
-              detection_capability$ui(ns("detection_capability"), products)
+              detection_capability$ui(ns("detection_capability"))
             ),
             shiny$tabPanel(
               "Linearity",
-              linearity$ui(ns("linearity"), products)
+              linearity$ui(ns("linearity"))
             )
           ),
           responses_table$ui(ns("responses"))
         )
       )
-    ),
-    fluent_font_awesome_icons()
+    )
   )
 }
+
+# ============================================================================
+# Server
+# ============================================================================
 
 #' @export
 server <- function(id) {
   shiny$moduleServer(id, function(input, output, session) {
     # ------------------------------------------------------------------------
-    # 1. Where answers are saved (file paths come from config.yml)
+    # 1. Settings and options (file paths come from config.yml)
     # ------------------------------------------------------------------------
     responses_file <- config$get("responses_file")
     daily_checks_file <- config$get("daily_checks_file")
+
+    people <- read_options(config$get("users_file"), "user")
+    experiment_types <- read_options(config$get("assays_file"), "assay")
+    instruments <- read_options(config$get("instruments_file"), "instrument")
+    controls <- read_controls(config$get("controls_file")) # columns: control, lot
+    products <- read_products(config$get("products_file")) # columns: product, lot
 
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
     # ------------------------------------------------------------------------
     # `experiment()` holds what the user chose on the landing page:
     # name, experiment_date, first_run (TRUE/FALSE) and experiment_type.
-    experiment <- landing$server("landing")
+    experiment <- landing$server("landing",
+      people = people,
+      experiment_type = experiment_types
+    )
 
     # When the user clicks Start, show the right second page.
     shiny$observeEvent(experiment(), {
@@ -195,7 +175,10 @@ server <- function(id) {
     daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
 
     # `daily_submission()` holds the form values after the user clicks Save.
-    daily_submission <- daily_check$server("daily_check")
+    daily_submission <- daily_check$server("daily_check",
+      instruments = instruments,
+      controls = controls
+    )
 
     # Save the check, unless this instrument was already checked on this date.
     shiny$observeEvent(daily_submission(), {
