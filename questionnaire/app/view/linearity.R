@@ -1,6 +1,7 @@
 # Shiny module: the page for the "Linearity" experiment.
 box::use(
   shiny,
+  shiny.fluent[FontIcon, Stack, Text],
 )
 
 box::use(
@@ -8,17 +9,21 @@ box::use(
 )
 
 #' @export
-ui <- function(id) {
+ui <- function(id, product_id) {
   ns <- shiny$NS(id)
-  shiny$fluidRow(
-    shiny$column(5, insert_product$ui(ns("product"))),   # 👈 reused module
-    shiny$column(
-      7,
-      shiny$div(
-        class = "app-card",
-        shiny$h3(shiny$icon("chart-line"), "Linearity measurements"),
-        shiny$p("Coming soon: the fields for this experiment.")
-      )
+  # Form on the left, measurements on the right (they stack on small screens).
+  Stack(
+    horizontal = TRUE,
+    wrap = TRUE,
+    tokens = list(childrenGap = 24),
+    shiny$div(class = "column-narrow", insert_product$ui(ns("product"), product_id)),
+    shiny$div(
+      class = "column-wide app-card",
+      Text(
+        variant = "large", class = "card-title",
+        FontIcon(iconName = "ChartSeries"), "Linearity measurements"
+      ),
+      Text("Coming soon: the fields for this experiment.")
     )
   )
 }

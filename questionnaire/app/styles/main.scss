@@ -1,112 +1,149 @@
-// to run: rhino::build_sass()
 // ---- Colours used in more than one place ----
 $primary: #2f6f73;
 $primary-soft: #e3efef;
+$page-bg: #f4f6f8;
 $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 
-// ---- Cards: white boxes with rounded corners and a soft shadow ----
+body {
+  background: $page-bg;
+  margin: 0;
+}
+
+// ---- Cards ----
 .landing-card,
 .app-card {
   background: white;
   border-radius: 14px;
   box-shadow: $card-shadow;
-  padding: 1.75rem;
-  margin-bottom: 1.5rem;
+  padding: 28px;
+  margin-bottom: 24px;
+  box-sizing: border-box;
+}
 
-  h3 {
-    font-size: 1.15rem;
-    margin-bottom: 1.25rem;
+// Card headings: icon + text on one line
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  margin-bottom: 8px;
 
-    i {
-      color: $primary;
-      margin-right: 0.5rem;
-    }
+  i {
+    color: $primary;
   }
 }
 
-// ---- Landing page: one centred card ----
+// ---- Landing page ----
 .landing-card {
-  max-width: 420px;
+  max-width: 440px;
   margin: 10vh auto;
-  padding: 2.5rem;
-  text-align: center;
+  padding: 40px;
 
   .landing-icon {
     width: 64px;
     height: 64px;
     line-height: 64px;
-    margin: 0 auto 1rem;
+    margin: 0 auto;
     border-radius: 50%;
     background: $primary-soft;
     color: $primary;
-    font-size: 1.6rem;
+    font-size: 29px;
+    text-align: center;
+  }
+
+  .landing-title,
+  .subtitle {
+    display: block;
+    text-align: center;
   }
 
   .subtitle {
     color: #6b7785;
-    margin-bottom: 1.75rem;
   }
 
-  .form-group {
-    text-align: left;
-  }
-
-  .btn-primary {
+  .ms-Button--primary {
     width: 100%;
-    margin-top: 0.5rem;
-    padding: 0.65rem;
+    height: 40px;
   }
 }
 
-// ---- Questionnaire page ----
+// ---- Second pages ----
 .questionnaire-page {
   max-width: 1100px;
-  margin: 2rem auto;
+  margin: 32px auto;
+  padding: 0 16px;
 }
 
 .page-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: 24px;
 
-  h2 {
+  .ms-Text {
     font-weight: 600;
-    margin-bottom: 0.75rem;
+    margin-bottom: 12px;
   }
 }
 
-// The little "pills" showing name, date and experiment
+// Experiment pages: form on the left, measurements on the right
+.half-width {
+  flex: 1;
+}
+
+.column-narrow {
+  flex: 5 1 320px;
+}
+
+.column-wide {
+  flex: 7 1 420px;
+}
+
+// The "pills" showing name, date and experiment
 .info-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 8px;
 
   .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     background: $primary-soft;
     color: $primary;
     border-radius: 999px;
-    padding: 0.3rem 0.85rem;
-    font-size: 0.9rem;
-
-    i {
-      margin-right: 0.35rem;
-    }
+    padding: 5px 14px;
+    font-size: 14px;
   }
-}
-
-// Labels a bit bolder, everywhere
-.control-label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-// Input boxes white (the theme would make them the same grey as the page)
-.form-control,
-.selectize-input {
-  background: white !important;
 }
 
 // Messages from validate()/need() shown under a form
 .form-message .shiny-output-error-validation {
   color: #b42318;
   font-weight: 600;
-  margin-bottom: 0.75rem;
+}
+
+// ---- Fluent colours: teal instead of Fluent's default blue ----
+.ms-Button--primary {
+  background: $primary;
+  border-color: $primary;
+
+  &:hover,
+  &:active {
+    background: darken($primary, 6%);
+    border-color: darken($primary, 6%);
+  }
+}
+
+// Radio buttons (ChoiceGroup): the checked circle
+.ms-ChoiceField-field.is-checked::before {
+  border-color: $primary;
+}
+
+.ms-ChoiceField-field.is-checked::after {
+  background-color: $primary;
+  border-color: $primary;
+}
+
+// Dropdowns and date picker: the border when selected
+.ms-Dropdown:focus::after,
+.ms-TextField-fieldGroup::after {
+  border-color: $primary;
 }

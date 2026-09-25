@@ -9,9 +9,9 @@
 #       experiment, saved to data/responses.csv.
 
 box::use(
-  bslib,
   config,
   shiny,
+  shiny.fluent[FontIcon, Text, fluentPage],
 )
 
 box::use(
@@ -27,6 +27,17 @@ box::use(
 )
 
 # ============================================================================
+# Options for the dropdowns
+# ============================================================================
+# Read once when the app starts. Fluent dropdowns get their options directly in
+# the UI (updating them from the server right at start-up does not work).
+people <- read_options(config$get("users_file"), "user")
+experiment_types <- read_options(config$get("assays_file"), "assay")
+instruments <- read_options(config$get("instruments_file"), "instrument")
+controls <- read_controls(config$get("controls_file")) # columns: control, lot
+products <- read_products(config$get("products_file")) # columns: product, lot
+
+# ============================================================================
 # UI
 # ============================================================================
 
@@ -34,19 +45,11 @@ box::use(
 ui <- function(id) {
   ns <- shiny$NS(id)
 
-  shiny$fluidPage(
-    title = "Lab Documentation Prototype",
-
-    # Colours and font for the whole app (card styles live in app/styles/main.scss)
-    theme = bslib$bs_theme(
-      version = 5,
-      primary = "#2f6f73", # buttons and accents
-      bg = "#f4f6f8", # page background
-      fg = "#1f2933", # text colour
-      base_font = bslib$font_collection(
-        "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"
-      )
-    ),
+  # suppressBootstrap = FALSE keeps Bootstrap, which the hidden tabsets use to switch pages.
+  fluentPage(
+    suppressBootstrap = FALSE,
+    shiny$bootstrapLib(),
+    shiny$tags$head(shiny$tags$title("Lab Documentation Prototype")),
 
     # The pages of the app. `type = "hidden"` hides the tab buttons:
     # the server decides which page is shown (see "Routing" below).
@@ -57,7 +60,7 @@ ui <- function(id) {
       # --- Page 1: landing -------------------------------------------------
       shiny$tabPanel(
         "landing",
-        landing$ui(ns("landing"))
+        landing$ui(ns("landing"), people, experiment_types)
       ),
 
       # --- Page 2a: first run of the day -----------------------------------
@@ -67,11 +70,11 @@ ui <- function(id) {
           class = "questionnaire-page",
           shiny$div(
             class = "page-header",
-            shiny$h2("Lab Documentation Prototype"),
+            Text(variant = "xxLarge", "Lab Documentation Prototype", block = TRUE),
             shiny$uiOutput(ns("daily_info")) # chips: user, date, "first run"
           ),
-          daily_check$ui(ns("daily_check")),
-          responses_table$ui(ns("daily_checks_table"))
+          daily_check$ui(ns("daily_check"), instruments, controls),
+          responses_table$ui(ns("daily_checks_table"), title = "Daily checks so far")
         )
       ),
 
@@ -82,7 +85,7 @@ ui <- function(id) {
           class = "questionnaire-page",
           shiny$div(
             class = "page-header",
-            shiny$h2("Lab Documentation Prototype"),
+            Text(variant = "xxLarge", "Lab Documentation Prototype", block = TRUE),
             shiny$uiOutput(ns("experiment_info")) # chips: user, date, experiment
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
@@ -91,11 +94,11 @@ ui <- function(id) {
             type = "hidden",
             shiny$tabPanel(
               "Detection Capability",
-              detection_capability$ui(ns("detection_capability"))
+              detection_capability$ui(ns("detection_capability"), products)
             ),
             shiny$tabPanel(
               "Linearity",
-              linearity$ui(ns("linearity"))
+              linearity$ui(ns("linearity"), products)
             )
           ),
           responses_table$ui(ns("responses"))
@@ -105,34 +108,21 @@ ui <- function(id) {
   )
 }
 
-# ============================================================================
-# Server
-# ============================================================================
-
 #' @export
 server <- function(id) {
   shiny$moduleServer(id, function(input, output, session) {
     # ------------------------------------------------------------------------
-    # 1. Settings and options (file paths come from config.yml)
+    # 1. Where answers are saved (file paths come from config.yml)
     # ------------------------------------------------------------------------
     responses_file <- config$get("responses_file")
     daily_checks_file <- config$get("daily_checks_file")
-
-    people <- read_options(config$get("users_file"), "user")
-    experiment_types <- read_options(config$get("assays_file"), "assay")
-    instruments <- read_options(config$get("instruments_file"), "instrument")
-    controls <- read_controls(config$get("controls_file")) # columns: control, lot
-    products <- read_products(config$get("products_file")) # columns: product, lot
 
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
     # ------------------------------------------------------------------------
     # `experiment()` holds what the user chose on the landing page:
     # name, experiment_date, first_run (TRUE/FALSE) and experiment_type.
-    experiment <- landing$server("landing",
-      people = people,
-      experiment_type = experiment_types
-    )
+    experiment <- landing$server("landing")
 
     # When the user clicks Start, show the right second page.
     shiny$observeEvent(experiment(), {
@@ -152,9 +142,9 @@ server <- function(id) {
       info <- experiment()
       shiny$div(
         class = "info-chips",
-        shiny$span(class = "chip", shiny$icon("user"), info$name),
-        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", shiny$icon("sun"), "First run of the day")
+        shiny$span(class = "chip", FontIcon(iconName = "Contact"), info$name),
+        shiny$span(class = "chip", FontIcon(iconName = "Calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", FontIcon(iconName = "Sunny"), "First run of the day")
       )
     })
 
@@ -162,9 +152,9 @@ server <- function(id) {
       info <- experiment()
       shiny$div(
         class = "info-chips",
-        shiny$span(class = "chip", shiny$icon("user"), info$name),
-        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", shiny$icon("flask"), info$experiment_type)
+        shiny$span(class = "chip", FontIcon(iconName = "Contact"), info$name),
+        shiny$span(class = "chip", FontIcon(iconName = "Calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", FontIcon(iconName = "TestBeaker"), info$experiment_type)
       )
     })
 
@@ -175,10 +165,7 @@ server <- function(id) {
     daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
 
     # `daily_submission()` holds the form values after the user clicks Save.
-    daily_submission <- daily_check$server("daily_check",
-      instruments = instruments,
-      controls = controls
-    )
+    daily_submission <- daily_check$server("daily_check")
 
     # Save the check, unless this instrument was already checked on this date.
     shiny$observeEvent(daily_submission(), {
