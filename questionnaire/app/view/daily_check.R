@@ -31,7 +31,10 @@ ui <- function(id) {
       # --- Step 1: instrument ------------------------------------------------
       shiny$tabPanel(
         "instrument",
-        shiny$h4(class = "step-title", "Which instrument are you checking?"),
+        shiny$h4(
+          id = ns("instrument_title"), class = "step-title",
+          "Which instrument are you checking?"
+        ),
         shiny$selectInput(ns("instrument"), "Instrument",
           choices = NULL, selectize = FALSE, width = "100%"
         ),
@@ -85,20 +88,28 @@ server <- function(id, instruments, controls, is_already_checked, save_check, st
     # Moving between steps
     # ------------------------------------------------------------------------
     current_step <- shiny$reactiveVal("instrument")
-    go_to <- function(step) {
+    # The heading of each step; focus moves there so keyboard and screen-reader
+    # users continue at the new step (see "focus-element" in main.R).
+    step_headings <- c(
+      instrument = "instrument_title", positive = "positive-title",
+      negative = "negative-title", done = "done_title"
+    )
+    go_to <- function(step, focus = TRUE) {
       current_step(step)
       shiny$updateTabsetPanel(session, "steps", selected = step)
+      if (focus) session$sendCustomMessage("focus-element", session$ns(step_headings[[step]]))
     }
 
     # Changing `reset` clears the answers in both control steps.
     reset <- shiny$reactiveVal(0)
-    start_over <- function() {
+    start_over <- function(focus = TRUE) {
       show_instrument_message(FALSE)
       shiny$updateSelectInput(session, "instrument", selected = "")
       reset(reset() + 1)
-      go_to("instrument")
+      go_to("instrument", focus = focus)
     }
-    shiny$observeEvent(start(), start_over())
+    # Coming from the landing page, focus goes to the page title instead (main.R).
+    shiny$observeEvent(start(), start_over(focus = FALSE))
     shiny$observeEvent(input$another, start_over())
 
     # The progress bar: done steps get a tick, the current one is highlighted.
@@ -202,7 +213,10 @@ server <- function(id, instruments, controls, is_already_checked, save_check, st
       shiny$req(check)
       shiny$div(
         class = "done-summary",
-        shiny$h4(class = "step-title", shiny$icon("circle-check"), "Daily check saved"),
+        shiny$h4(
+          id = session$ns("done_title"), class = "step-title",
+          shiny$icon("circle-check"), "Daily check saved"
+        ),
         shiny$tags$dl(
           shiny$tags$dt("Instrument"),
           shiny$tags$dd(paste0(

@@ -16,7 +16,9 @@ ui <- function(id) {
     shiny$selectInput(ns("product"), "Product", choices = NULL, selectize = FALSE, width = "100%"),
     shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
     shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
-    shiny$actionButton(ns("submit"), "Submit", class = "btn-primary", icon = shiny$icon("check")),
+    shiny$actionButton(ns("submit"), "Save answer",
+      class = "btn-primary", icon = shiny$icon("check")
+    ),
     # Confirmation after saving; screen readers read it out (it is a live region).
     shiny$div(class = "form-success", shiny$textOutput(ns("saved")))
   )
@@ -25,7 +27,7 @@ ui <- function(id) {
 #' Server part of the form.
 #'
 #' `product_id` is a table with the columns product and lot.
-#' Returns a reactive that holds the latest submitted answer.
+#' Returns a reactive that holds the latest saved answer.
 #' @export
 server <- function(id, product_id) {
   shiny$moduleServer(id, function(input, output, session) {
@@ -42,7 +44,7 @@ server <- function(id, product_id) {
       )
     })
 
-    # Error messages: shown after a click on Submit, hidden again when an answer changes.
+    # Error messages: shown after a click on Save, hidden again when an answer changes.
     show_message <- shiny$reactiveVal(FALSE)
     shiny$observeEvent(input$submit, show_message(TRUE))
     shiny$observeEvent(list(input$product, input$lot), show_message(FALSE), ignoreInit = TRUE)

@@ -33,13 +33,25 @@ box::use(
 # UI
 # ============================================================================
 
+# Moves keyboard focus to an element (e.g. the heading of a page that just
+# appeared), so keyboard and screen-reader users continue in the right place.
+# From the server: session$sendCustomMessage("focus-element", "<element id>").
+focus_script <- shiny$tags$script(shiny$HTML("
+  Shiny.addCustomMessageHandler('focus-element', function(id) {
+    setTimeout(function() {
+      var el = document.getElementById(id);
+      if (el) { el.setAttribute('tabindex', '-1'); el.focus(); }
+    }, 60);
+  });
+"))
+
 # The header of the second pages: title, "Start over" button and the chips.
-page_header <- function(info_id, start_over_id) {
+page_header <- function(heading_id, info_id, start_over_id) {
   shiny$div(
     class = "page-header",
     shiny$div(
       class = "page-header-row",
-      shiny$h2("Lab Documentation Prototype"),
+      shiny$h2(id = heading_id, "Lab Documentation Prototype"),
       shiny$actionButton(start_over_id, "Start over",
         class = "btn-outline-secondary", icon = shiny$icon("rotate-left")
       )
@@ -69,6 +81,8 @@ ui <- function(id) {
       )
     ),
 
+    focus_script,
+
     # The pages of the app. `type = "hidden"` hides the tab buttons:
     # the server decides which page is shown (see "Routing" below).
     shiny$tabsetPanel(
@@ -87,6 +101,7 @@ ui <- function(id) {
         shiny$div(
           class = "questionnaire-page narrow",
           page_header(
+            heading_id = ns("daily_heading"),
             info_id = ns("daily_info"), # chips: user, date, "first run"
             start_over_id = ns("start_over_daily")
           ),
@@ -100,6 +115,7 @@ ui <- function(id) {
         shiny$div(
           class = "questionnaire-page narrow",
           page_header(
+            heading_id = ns("experiment_heading"),
             info_id = ns("experiment_info"), # chips: user, date, experiment
             start_over_id = ns("start_over_experiment")
           ),
@@ -116,7 +132,7 @@ ui <- function(id) {
               linearity$ui(ns("linearity"))
             )
           ),
-          responses_table$ui(ns("responses"))
+          responses_table$ui(ns("responses"), title = "Your answers for this date")
         )
       )
     )
@@ -145,11 +161,23 @@ server <- function(id) {
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
     # ------------------------------------------------------------------------
+    # The saved daily checks as they are on disk, re-read when the file changes
+    # (checked every 5 seconds), so checks saved by colleagues show up too.
+    daily_checks_on_disk <- shiny$reactiveFileReader(
+      5000, session, daily_checks_file, load_daily_checks
+    )
+    checked_on <- function(date) {
+      checks <- daily_checks_on_disk()
+      unique(checks$instrument[checks$date == format(as.Date(date), "%Y-%m-%d")])
+    }
+
     # `experiment()` holds what the user chose on the landing page:
     # name, experiment_date, first_run (TRUE/FALSE) and experiment_type.
     experiment <- landing$server("landing",
       people = people,
-      experiment_type = experiment_types
+      experiment_type = experiment_types,
+      instruments = instruments$instrument,
+      checked_on = checked_on
     )
 
     # When the user clicks Start, show the right second page.
@@ -157,9 +185,11 @@ server <- function(id) {
       info <- experiment()
       if (info$first_run) {
         shiny$updateTabsetPanel(session, "pages", selected = "daily_check")
+        session$sendCustomMessage("focus-element", session$ns("daily_heading"))
       } else {
         shiny$updateTabsetPanel(session, "experiment_pages", selected = info$experiment_type)
         shiny$updateTabsetPanel(session, "pages", selected = "questionnaire")
+        session$sendCustomMessage("focus-element", session$ns("experiment_heading"))
       }
     })
 
@@ -168,6 +198,7 @@ server <- function(id) {
     shiny$observeEvent(list(input$start_over_daily, input$start_over_experiment),
       {
         shiny$updateTabsetPanel(session, "pages", selected = "landing")
+        session$sendCustomMessage("focus-element", session$ns("landing-title"))
       },
       ignoreInit = TRUE
     )
@@ -260,7 +291,7 @@ server <- function(id) {
       # The confirmation is shown in the form itself (see insert_product.R).
     }
 
-    # One module per experiment; each returns its answer after Submit.
+    # One module per experiment; each returns its answer after "Save answer".
     detection_submission <- detection_capability$server("detection_capability",
       product_id = products
     )
@@ -271,6 +302,17 @@ server <- function(id) {
     shiny$observeEvent(detection_submission(), save_answer(detection_submission()))
     shiny$observeEvent(linearity_submission(), save_answer(linearity_submission()))
 
-    responses_table$server("responses", responses = responses)
+    # The table shows only this user's answers for the chosen date (without the
+    # date and user columns, which the chips above already show).
+    my_answers <- shiny$reactive({
+      info <- experiment()
+      all <- responses()
+      mine <- all$date == format(as.Date(info$experiment_date), "%Y-%m-%d") & all$user == info$name
+      all[mine, c("experiment", "product", "lot"), drop = FALSE]
+    })
+    responses_table$server("responses",
+      responses = my_answers,
+      empty_text = "No answers saved for this date yet. They will appear here after you save one."
+    )
   })
 }

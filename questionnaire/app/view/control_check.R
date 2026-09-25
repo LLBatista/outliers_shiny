@@ -11,7 +11,7 @@ yes_no <- c("Yes" = "yes", "No" = "no")
 ui <- function(id, title, next_label) {
   ns <- shiny$NS(id)
   shiny$tagList(
-    shiny$h4(class = "step-title", title),
+    shiny$h4(id = ns("title"), class = "step-title", title),
     shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
     shiny$radioButtons(ns("valid"), "Was the control valid?",
       choices = yes_no, selected = character(0), inline = TRUE
