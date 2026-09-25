@@ -166,8 +166,15 @@ server <- function(id) {
     daily_checks_on_disk <- shiny$reactiveFileReader(
       5000, session, daily_checks_file, load_daily_checks
     )
+    # Changes when this session saves a daily check, so the landing page updates
+    # at once instead of after the next 5-second re-read.
+    daily_check_saved <- shiny$reactiveVal(0)
     checked_on <- function(date) {
-      checks <- daily_checks_on_disk()
+      # Recalculate when this session saves a check, or when the file changes on disk;
+      # then read the file itself, so the answer is never an older cached copy.
+      daily_check_saved()
+      daily_checks_on_disk()
+      checks <- load_daily_checks(daily_checks_file)
       unique(checks$instrument[checks$date == format(as.Date(date), "%Y-%m-%d")])
     }
 
@@ -229,15 +236,17 @@ server <- function(id) {
     # ------------------------------------------------------------------------
     # 4. First run of the day (daily check)
     # ------------------------------------------------------------------------
-    # All saved daily checks; starts with what is already in the CSV.
-    daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
-
     # Was this instrument already checked on the date chosen on the landing page?
+    # Reads the saved checks from the file every time, so a check saved by a
+    # colleague a moment ago counts too (not only what this session saw at start).
     is_already_checked <- function(instrument) {
-      already_checked(daily_checks(), experiment()$experiment_date, instrument)
+      saved <- load_daily_checks(daily_checks_file)
+      already_checked(saved, experiment()$experiment_date, instrument)
     }
 
     # Saves one finished daily check; returns TRUE if it was saved.
+    # Checks again right before saving: someone may have saved this instrument
+    # while this user was filling in the controls.
     save_daily_check <- function(check) {
       info <- experiment() # from the landing page
       if (is_already_checked(check$instrument)) {
@@ -257,7 +266,7 @@ server <- function(id) {
         negative = check$negative
       )
       save_response(row, daily_checks_file)
-      daily_checks(rbind(daily_checks(), row))
+      daily_check_saved(daily_check_saved() + 1)
       TRUE
     }
 
