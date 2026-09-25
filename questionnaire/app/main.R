@@ -121,17 +121,22 @@ server <- function(id) {
     shiny$observeEvent(daily_submission(), {
       check <- daily_submission()
       info <- experiment()
-      row <- new_daily_checks(
-        date = info$experiment_date,
-        user = info$name,
-        instrument = check$instrument,
-        controls = check$controls,
-        controls_valid = check$controls_valid,
-        rerun_valid = check$rerun_valid
-      )
-      save_response(row, daily_checks_file)
-      daily_checks(rbind(daily_checks(), row))
-      shiny$showNotification("Daily check saved.", type = "message")
+      if (already_checked(daily_checks(), info$experiment_date, info$name)) {
+        shiny$showNotification("You already saved a daily check for this date.", type = "error")
+      } else {
+        row <- new_daily_checks(
+          date = info$experiment_date,
+          user = info$name,
+          instrument = check$instrument,
+          positive_lot = check$positive_lot,
+          negative_lot = check$negative_lot,
+          controls_valid = check$controls_valid,
+          rerun_valid = check$rerun_valid
+        )
+        save_response(row, daily_checks_file)
+        daily_checks(rbind(daily_checks(), row))
+        shiny$showNotification("Daily check saved.", type = "message")
+      }
     })
     
     responses_table$server("daily_checks_table", responses = daily_checks)
