@@ -9,7 +9,10 @@ box::use(
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/responses[load_responses, new_response, save_response],
-  app/logic/daily_checks[load_daily_checks, new_daily_checks],
+  app/logic/daily_checks[already_checked, 
+                         load_daily_checks, 
+                         new_daily_checks, 
+                         read_controls],  
   app/view/daily_check,
   app/view/landing,
   app/view/insert_product,
@@ -115,23 +118,27 @@ server <- function(id) {
     daily_checks <- shiny$reactiveVal(load_daily_checks(daily_checks_file))
     daily_submission <- daily_check$server("daily_check",
                                            instruments = read_options(config$get("instruments_file"), "instrument"),
-                                           controls = read_options(config$get("controls_file"), "control")
-                                    )
+                                           controls = read_controls(config$get("controls_file"))      )
     
     shiny$observeEvent(daily_submission(), {
       check <- daily_submission()
       info <- experiment()
-      row <- new_daily_checks(
-        date = info$experiment_date,
-        user = info$name,
-        instrument = check$instrument,
-        controls = check$controls,
-        controls_valid = check$controls_valid,
-        rerun_valid = check$rerun_valid
-      )
-      save_response(row, daily_checks_file)
-      daily_checks(rbind(daily_checks(), row))
-      shiny$showNotification("Daily check saved.", type = "message")
+      if (already_checked(daily_checks(), info$experiment_date, info$name)) {
+        shiny$showNotification("You already saved a daily check for this date.", type = "error")
+      } else {
+        row <- new_daily_checks(
+          date = info$experiment_date,
+          user = info$name,
+          instrument = check$instrument,
+          positive_lot = check$positive_lot,
+          negative_lot = check$negative_lot,
+          controls_valid = check$controls_valid,
+          rerun_valid = check$rerun_valid
+        )
+        save_response(row, daily_checks_file)
+        daily_checks(rbind(daily_checks(), row))
+        shiny$showNotification("Daily check saved.", type = "message")
+      }
     })
     
     responses_table$server("daily_checks_table", responses = daily_checks)
