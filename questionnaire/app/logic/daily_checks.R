@@ -1,7 +1,10 @@
 # Plain R code (no Shiny): instruments, controls and the daily first-run checks.
 box::use(
-  stats[setNames],
   utils[read.csv],
+)
+
+box::use(
+  app/logic/records[now_text, read_table],
 )
 
 #' Read the instruments and their software / firmware versions from a CSV file.
@@ -36,7 +39,7 @@ lots_for_control <- function(controls, control) {
 daily_check_columns <- c(
   "date", "user", "instrument", "software_version", "firmware_version",
   "positive_lot", "positive_valid", "positive_rerun_valid",
-  "negative_lot", "negative_valid", "negative_rerun_valid"
+  "negative_lot", "negative_valid", "negative_rerun_valid", "saved_at"
 )
 
 #' Build a one-row data frame with one daily check.
@@ -57,6 +60,7 @@ new_daily_checks <- function(date, user, instrument, software_version, firmware_
     negative_lot = negative$lot,
     negative_valid = negative$valid,
     negative_rerun_valid = negative$rerun_valid,
+    saved_at = now_text(),
     stringsAsFactors = FALSE
   )
 }
@@ -64,11 +68,7 @@ new_daily_checks <- function(date, user, instrument, software_version, firmware_
 #' Read all saved daily checks (an empty table if there are none yet).
 #' @export
 load_daily_checks <- function(path) {
-  if (!file.exists(path)) {
-    empty_columns <- rep(list(character(0)), length(daily_check_columns))
-    return(as.data.frame(setNames(empty_columns, daily_check_columns)))
-  }
-  read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
+  read_table(path, daily_check_columns)
 }
 
 #' Has this instrument already had a daily check on this date?

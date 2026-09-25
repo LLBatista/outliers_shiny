@@ -2,3 +2,6 @@
 .Rhistory
 # Answers collected while running the app locally.
 data/responses.csv
+data/daily_checks.csv
+# Log of corrected versions and added lots made in the app.
+data/change_log.csv

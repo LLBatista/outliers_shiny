@@ -15,3 +15,5 @@ default:
   # Where submitted answers are appended.
   responses_file: "data/responses.csv"
   daily_checks_file: "data/daily_checks.csv"
+  # Log of corrected instrument versions and added lots (who and when).
+  changes_file: "data/change_log.csv"

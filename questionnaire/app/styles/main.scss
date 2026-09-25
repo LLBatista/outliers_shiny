@@ -433,3 +433,46 @@ select.shiny-input-select {
     color: $text-muted-on-tint;
   }
 }
+
+// ---- "Lot not listed? Add it" / "Versions not right?": small folding forms ----
+// <details> opens and closes in the browser; the summary is the tap target.
+.change-box {
+  margin: -0.25rem 0 1.25rem;
+
+  > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: $touch;
+    color: $primary;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &[open] {
+    background: $primary-soft;
+    border-radius: $radius;
+    padding: 0 1rem 1rem;
+
+    label {
+      color: $text;
+    }
+  }
+}
+
+// Information shown instead of a choice (e.g. no instrument checked yet)
+.notice {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  background: $primary-soft;
+  color: $text-muted-on-tint;
+  border-radius: $radius;
+  padding: 0.75rem 1rem;
+  margin: -0.25rem 0 1.25rem;
+
+  i {
+    color: $primary;
+  }
+}

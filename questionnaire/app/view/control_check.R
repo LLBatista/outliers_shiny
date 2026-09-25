@@ -4,6 +4,10 @@ box::use(
   shiny,
 )
 
+box::use(
+  app/view/add_lot,
+)
+
 yes_no <- c("Yes" = "yes", "No" = "no")
 
 #' `title` is shown above the form, `next_label` on the main button.
@@ -13,6 +17,7 @@ ui <- function(id, title, next_label) {
   shiny$tagList(
     shiny$h4(id = ns("title"), class = "step-title", title),
     shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
+    add_lot$ui(ns("add_lot")),
     shiny$radioButtons(ns("valid"), "Was the control valid?",
       choices = yes_no, selected = character(0), inline = TRUE
     ),
@@ -35,15 +40,37 @@ ui <- function(id, title, next_label) {
   )
 }
 
-#' `lots` are the lots to choose from; when `reset()` changes, the answers are cleared.
+#' `lots()`: the lots to choose from (a reactive: it grows when a lot is added).
+#' `reset()`: when it changes, the answers are cleared.
+#' `add_new_lot(lot)`: saves and logs a lot that was not listed (a function from main.R).
 #'
 #' Returns a list with two reactives:
 #' - `result`: the answers (lot, valid, rerun_valid), after the main button is clicked
 #' - `back`: changes when the Back button is clicked
 #' @export
-server <- function(id, lots, reset) {
+server <- function(id, lots, reset, add_new_lot) {
   shiny$moduleServer(id, function(input, output, session) {
-    shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = "", lots))
+    # The lot the user chose, kept here so it survives when the list is refreshed.
+    chosen_lot <- shiny$reactiveVal("")
+    shiny$observeEvent(input$lot, chosen_lot(input$lot))
+
+    # Fill the list, and refill it whenever it changes (e.g. a colleague added a lot).
+    shiny$observeEvent(lots(), {
+      shiny$updateSelectInput(session, "lot",
+        choices = c("Choose a lot..." = "", lots()),
+        selected = shiny$isolate(chosen_lot())
+      )
+    })
+
+    # "Lot not listed? Add it": once added, the new lot is selected.
+    added <- add_lot$server("add_lot", existing = lots, add = add_new_lot)
+    shiny$observeEvent(added(), {
+      chosen_lot(added())
+      shiny$updateSelectInput(session, "lot",
+        choices = c("Choose a lot..." = "", lots()),
+        selected = added()
+      )
+    })
 
     # The error messages are shown after a click on the main button, and hidden
     # again as soon as the user changes an answer.
@@ -56,6 +83,7 @@ server <- function(id, lots, reset) {
     shiny$observeEvent(reset(),
       {
         show_message(FALSE)
+        chosen_lot("")
         shiny$updateSelectInput(session, "lot", selected = "")
         shiny$updateRadioButtons(session, "valid", selected = character(0))
         shiny$updateRadioButtons(session, "rerun_valid", selected = character(0))

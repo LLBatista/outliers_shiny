@@ -39,6 +39,20 @@ ui <- function(id) {
           choices = NULL, selectize = FALSE, width = "100%"
         ),
         shiny$uiOutput(ns("versions")),
+        # "Versions not right?": only once an instrument is chosen.
+        shiny$conditionalPanel(
+          condition = "input.instrument != ''",
+          ns = ns,
+          shiny$tags$details(
+            class = "change-box",
+            shiny$tags$summary("Versions not right? Enter the correct ones"),
+            shiny$textInput(ns("new_software"), "Software version", width = "100%"),
+            shiny$textInput(ns("new_firmware"), "Firmware version", width = "100%"),
+            shiny$div(class = "form-message", shiny$textOutput(ns("versions_message"))),
+            shiny$actionButton(ns("save_versions"), "Save versions", icon = shiny$icon("check")),
+            shiny$div(class = "form-success", shiny$textOutput(ns("versions_saved")))
+          )
+        ),
         shiny$div(class = "form-message", shiny$textOutput(ns("instrument_message"))),
         shiny$div(
           class = "step-buttons",
@@ -76,13 +90,17 @@ ui <- function(id) {
 }
 
 #' Arguments:
-#' - `instruments`: table with instrument, software_version, firmware_version
-#' - `controls`: table with control, lot
+#' - `instruments()`: table with instrument, software_version, firmware_version (reactive,
+#'   it changes when versions are corrected)
+#' - `controls()`: table with control, lot (reactive, it grows when a lot is added)
 #' - `is_already_checked(instrument)`: TRUE if this instrument was already checked today
 #' - `save_check(check)`: saves the check; returns TRUE if it was saved
 #' - `start()`: changes when the user starts again from the landing page
+#' - `change_versions(instrument, software, firmware)`: saves and logs corrected versions
+#' - `add_control_lot(control, lot)`: saves and logs a control lot that was not listed
 #' @export
-server <- function(id, instruments, controls, is_already_checked, save_check, start) {
+server <- function(id, instruments, controls, is_already_checked, save_check, start,
+                   change_versions, add_control_lot) {
   shiny$moduleServer(id, function(input, output, session) {
     # ------------------------------------------------------------------------
     # Moving between steps
@@ -130,13 +148,55 @@ server <- function(id, instruments, controls, is_already_checked, save_check, st
     # ------------------------------------------------------------------------
     # Step 1: instrument
     # ------------------------------------------------------------------------
+    # The list of instruments itself doesn't change, only their versions.
     shiny$updateSelectInput(session, "instrument",
-      choices = c("Choose an instrument..." = "", instruments$instrument)
+      choices = c("Choose an instrument..." = "", shiny$isolate(instruments()$instrument))
     )
 
     versions <- shiny$reactive({
       shiny$req(input$instrument)
-      instrument_versions(instruments, input$instrument)
+      instrument_versions(instruments(), input$instrument)
+    })
+
+    # "Versions not right?": the form starts with the current versions.
+    shiny$observeEvent(input$instrument, {
+      shiny$req(input$instrument)
+      v <- versions()
+      shiny$updateTextInput(session, "new_software", value = v$software_version)
+      shiny$updateTextInput(session, "new_firmware", value = v$firmware_version)
+      versions_saved("")
+    })
+
+    show_versions_message <- shiny$reactiveVal(FALSE)
+    shiny$observeEvent(input$save_versions, show_versions_message(TRUE))
+    shiny$observeEvent(list(input$new_software, input$new_firmware), show_versions_message(FALSE),
+      ignoreInit = TRUE
+    )
+
+    new_versions <- shiny$eventReactive(input$save_versions, {
+      software <- trimws(input$new_software)
+      firmware <- trimws(input$new_firmware)
+      v <- versions()
+      shiny$validate(
+        shiny$need(software != "" && firmware != "", "Please fill in both versions."),
+        shiny$need(
+          software != v$software_version || firmware != v$firmware_version,
+          "These are the versions already on record."
+        )
+      )
+      list(software = software, firmware = firmware)
+    })
+
+    output$versions_message <- shiny$renderText({
+      if (show_versions_message()) new_versions()
+      ""
+    })
+
+    versions_saved <- shiny$reactiveVal("")
+    output$versions_saved <- shiny$renderText(versions_saved())
+    shiny$observeEvent(new_versions(), {
+      change_versions(input$instrument, new_versions()$software, new_versions()$firmware)
+      versions_saved("New versions saved and logged.")
     })
 
     output$versions <- shiny$renderUI({
@@ -175,12 +235,14 @@ server <- function(id, instruments, controls, is_already_checked, save_check, st
     # Steps 2 and 3: the controls
     # ------------------------------------------------------------------------
     positive <- control_check$server("positive",
-      lots = lots_for_control(controls, "Positive Control"),
-      reset = reset
+      lots = shiny$reactive(lots_for_control(controls(), "Positive Control")),
+      reset = reset,
+      add_new_lot = function(lot) add_control_lot("Positive Control", lot)
     )
     negative <- control_check$server("negative",
-      lots = lots_for_control(controls, "Negative Control"),
-      reset = reset
+      lots = shiny$reactive(lots_for_control(controls(), "Negative Control")),
+      reset = reset,
+      add_new_lot = function(lot) add_control_lot("Negative Control", lot)
     )
 
     shiny$observeEvent(positive$back(), go_to("instrument"), ignoreInit = TRUE)
