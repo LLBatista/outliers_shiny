@@ -1,7 +1,7 @@
 # Shiny module: the page for the "Detection Capability" experiment.
 box::use(
   shiny,
-  shiny.fluent[FontIcon, Stack, Text],
+  shiny.fluent[Stack, Text],
 )
 
 box::use(
@@ -21,7 +21,7 @@ ui <- function(id, product_id) {
       class = "column-wide app-card",
       Text(
         variant = "large", class = "card-title",
-        FontIcon(iconName = "TestBeaker"), "Detection capability measurements"
+        shiny$icon("vial"), "Detection capability measurements"
       ),
       Text("Coming soon: the fields for this experiment.")
     )

@@ -2,7 +2,7 @@
 box::use(
   shiny,
   shiny.fluent[
-    Dropdown.shinyInput, FontIcon, PrimaryButton.shinyInput, Stack, Text, updateDropdown.shinyInput
+    Dropdown.shinyInput, PrimaryButton.shinyInput, Stack, Text, updateDropdown.shinyInput
   ],
 )
 
@@ -20,7 +20,7 @@ ui <- function(id, product_id) {
       tokens = list(childrenGap = 16),
       Text(
         variant = "large", class = "card-title",
-        FontIcon(iconName = "Product"), "Which product did you use?"
+        shiny$icon("box-open"), "Which product did you use?"
       ),
       Dropdown.shinyInput(
         ns("product"),

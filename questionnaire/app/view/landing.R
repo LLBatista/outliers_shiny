@@ -2,8 +2,8 @@
 box::use(
   shiny,
   shiny.fluent[
-    ChoiceGroup.shinyInput, DatePicker.shinyInput, Dropdown.shinyInput, FontIcon,
-    PrimaryButton.shinyInput, Stack, Text
+    ChoiceGroup.shinyInput, DatePicker.shinyInput, Dropdown.shinyInput, PrimaryButton.shinyInput,
+    Stack, Text
   ],
 )
 
@@ -18,7 +18,7 @@ ui <- function(id, people, experiment_types) {
     class = "landing-card",
     Stack(
       tokens = list(childrenGap = 16),
-      shiny$div(class = "landing-icon", FontIcon(iconName = "TestBeakerSolid")),
+      shiny$div(class = "landing-icon", shiny$icon("flask")),
       Text(variant = "xxLarge", class = "landing-title", "Welcome!"),
       Text(class = "subtitle", "Tell us about your experiment to get started."),
       Dropdown.shinyInput(

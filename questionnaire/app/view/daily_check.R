@@ -2,7 +2,7 @@
 box::use(
   shiny,
   shiny.fluent[
-    ChoiceGroup.shinyInput, Dropdown.shinyInput, FontIcon, PrimaryButton.shinyInput, Stack, Text
+    ChoiceGroup.shinyInput, Dropdown.shinyInput, PrimaryButton.shinyInput, Stack, Text
   ],
 )
 
@@ -24,7 +24,7 @@ ui <- function(id, instruments, controls) {
       tokens = list(childrenGap = 16),
       Text(
         variant = "large", class = "card-title",
-        FontIcon(iconName = "ClipboardList"), "First run of the day"
+        shiny$icon("clipboard-check"), "First run of the day"
       ),
       Dropdown.shinyInput(
         ns("instrument"),

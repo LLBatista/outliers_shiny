@@ -142,8 +142,20 @@ body {
   border-color: $primary;
 }
 
+// Calendar: the circle around today's date
+.ms-CalendarDay-dayIsToday {
+  background-color: $primary !important;
+}
+
 // Dropdowns and date picker: the border when selected
 .ms-Dropdown:focus::after,
 .ms-TextField-fieldGroup::after {
   border-color: $primary;
+}
+
+// ---- Icons ----
+// Fluent's icons are drawn with Font Awesome (see app/static/js/fluent_icons.js).
+// The ones we use only exist in Font Awesome's "solid" style, which is weight 900.
+[data-icon-name] {
+  font-weight: 900 !important;
 }

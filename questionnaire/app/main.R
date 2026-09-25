@@ -10,8 +10,9 @@
 
 box::use(
   config,
+  htmltools[htmlDependency],
   shiny,
-  shiny.fluent[FontIcon, Text, fluentPage],
+  shiny.fluent[Text],
 )
 
 box::use(
@@ -41,13 +42,41 @@ products <- read_products(config$get("products_file")) # columns: product, lot
 # UI
 # ============================================================================
 
+# Nothing in the app is loaded from the internet (it runs on a local server):
+# - `FabricConfig` points Fluent's own fonts and icons to the app instead of
+#   Microsoft's servers. It must load before shiny.fluent.
+# - static/js/fluent_icons.js draws the Fluent icons we use with Font Awesome.
+#   It must load after shiny.fluent.
+fluent_offline_config <- function() {
+  htmlDependency(
+    name = "fluent-offline-config",
+    version = "1.0.0",
+    src = c(href = "static"),
+    head = paste0(
+      "<script>window.FabricConfig = ",
+      "{ iconBaseUrl: 'static/', fontBaseUrl: 'static' };</script>"
+    )
+  )
+}
+
+fluent_font_awesome_icons <- function() {
+  htmlDependency(
+    name = "fluent-font-awesome-icons",
+    version = "1.0.0",
+    src = c(href = "static/js"),
+    script = "fluent_icons.js"
+  )
+}
+
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
 
-  # suppressBootstrap = FALSE keeps Bootstrap, which the hidden tabsets use to switch pages.
-  fluentPage(
-    suppressBootstrap = FALSE,
+  # What shiny.fluent's fluentPage() does, minus the stylesheet it loads from the internet.
+  shiny$tags$body(
+    class = "ms-Fabric",
+    fluent_offline_config(),
+    # Bootstrap is used by the hidden tabsets to switch pages.
     shiny$bootstrapLib(),
     shiny$tags$head(shiny$tags$title("Lab Documentation Prototype")),
 
@@ -104,7 +133,8 @@ ui <- function(id) {
           responses_table$ui(ns("responses"))
         )
       )
-    )
+    ),
+    fluent_font_awesome_icons()
   )
 }
 
@@ -142,9 +172,9 @@ server <- function(id) {
       info <- experiment()
       shiny$div(
         class = "info-chips",
-        shiny$span(class = "chip", FontIcon(iconName = "Contact"), info$name),
-        shiny$span(class = "chip", FontIcon(iconName = "Calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", FontIcon(iconName = "Sunny"), "First run of the day")
+        shiny$span(class = "chip", shiny$icon("user"), info$name),
+        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", shiny$icon("sun"), "First run of the day")
       )
     })
 
@@ -152,9 +182,9 @@ server <- function(id) {
       info <- experiment()
       shiny$div(
         class = "info-chips",
-        shiny$span(class = "chip", FontIcon(iconName = "Contact"), info$name),
-        shiny$span(class = "chip", FontIcon(iconName = "Calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", FontIcon(iconName = "TestBeaker"), info$experiment_type)
+        shiny$span(class = "chip", shiny$icon("user"), info$name),
+        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
+        shiny$span(class = "chip", shiny$icon("flask"), info$experiment_type)
       )
     })
 

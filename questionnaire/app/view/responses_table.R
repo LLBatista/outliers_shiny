@@ -1,7 +1,7 @@
 # Shiny module: a table (Fluent DetailsList) with the rows saved so far.
 box::use(
   shiny,
-  shiny.fluent[DetailsList, FontIcon, Text, reactOutput, renderReact],
+  shiny.fluent[DetailsList, Text, reactOutput, renderReact],
 )
 
 #' @export
@@ -9,7 +9,7 @@ ui <- function(id, title = "Answers so far") {
   ns <- shiny$NS(id)
   shiny$div(
     class = "app-card",
-    Text(variant = "large", class = "card-title", FontIcon(iconName = "Table"), title),
+    Text(variant = "large", class = "card-title", shiny$icon("table-list"), title),
     reactOutput(ns("table"))
   )
 }

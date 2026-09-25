@@ -1,7 +1,7 @@
 # Shiny module: the page for the "Linearity" experiment.
 box::use(
   shiny,
-  shiny.fluent[FontIcon, Stack, Text],
+  shiny.fluent[Stack, Text],
 )
 
 box::use(
@@ -21,7 +21,7 @@ ui <- function(id, product_id) {
       class = "column-wide app-card",
       Text(
         variant = "large", class = "card-title",
-        FontIcon(iconName = "ChartSeries"), "Linearity measurements"
+        shiny$icon("chart-line"), "Linearity measurements"
       ),
       Text("Coming soon: the fields for this experiment.")
     )
