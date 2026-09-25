@@ -32,7 +32,9 @@ ui <- function(id) {
       shiny$tabPanel(
         "instrument",
         shiny$h4(class = "step-title", "Which instrument are you checking?"),
-        shiny$selectInput(ns("instrument"), "Instrument", choices = NULL, width = "100%"),
+        shiny$selectInput(ns("instrument"), "Instrument",
+          choices = NULL, selectize = FALSE, width = "100%"
+        ),
         shiny$uiOutput(ns("versions")),
         shiny$div(class = "form-message", shiny$textOutput(ns("instrument_message"))),
         shiny$div(
@@ -59,7 +61,8 @@ ui <- function(id) {
       # --- Done ----------------------------------------------------------------
       shiny$tabPanel(
         "done",
-        shiny$uiOutput(ns("summary")),
+        # role = "status": screen readers read the summary out when it appears.
+        shiny$div(role = "status", shiny$uiOutput(ns("summary"))),
         shiny$div(
           class = "step-buttons",
           shiny$actionButton(ns("another"), "Check another instrument", icon = shiny$icon("plus"))

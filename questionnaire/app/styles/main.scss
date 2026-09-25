@@ -4,7 +4,7 @@ $primary: #004195; // Sebia blue
 $primary-soft: #e0e8f2; // light tint of the same blue
 $text: #1f2933;
 $text-muted: #5f6b78; // secondary text; at least 4.5:1 on white
-$border: #c9d1d9;
+$border: #85909c; // field and pill outlines; at least 3:1 on white
 $error: #b42318;
 $card-shadow: 0 4px 20px rgba(31, 41, 51, 0.08);
 $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe with gloves)
@@ -127,8 +127,9 @@ $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe 
 // ---- Touch-friendly fields and buttons ----
 // Input boxes white (the theme would make them the same grey as the page)
 .form-control,
+.form-select,
 .selectize-input {
-  background: white !important;
+  background-color: white !important;
   min-height: $touch;
   font-size: 1rem;
   border-color: $border;
@@ -143,6 +144,18 @@ $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe 
   input::placeholder {
     color: $text-muted;
   }
+}
+
+// Native dropdowns (selectize = FALSE): Shiny gives them the text-box class, which
+// has no arrow, so draw Bootstrap's chevron to show they open.
+select.shiny-input-select {
+  appearance: none;
+  padding-right: 2.75rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343d47' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 16px 12px;
+  cursor: pointer;
 }
 
 // Dropdown options: easy to hit with a finger
@@ -210,6 +223,13 @@ $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe 
   margin-bottom: 0.75rem;
 }
 
+// "Answer saved: ..." under the Submit button
+.form-success .shiny-text-output:not(:empty) {
+  margin-top: 1rem;
+  color: $primary;
+  font-weight: 600;
+}
+
 .empty-state,
 .placeholder-text {
   color: $text-muted;
@@ -229,6 +249,7 @@ $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe 
 
 .btn:focus-visible,
 .form-control:focus,
+.form-select:focus,
 .selectize-input.focus {
   box-shadow: 0 0 0 3px rgba($primary, 0.3) !important;
   border-color: $primary !important;

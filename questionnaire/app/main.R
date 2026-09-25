@@ -54,6 +54,9 @@ ui <- function(id) {
 
   shiny$fluidPage(
     title = "Lab Documentation Prototype",
+    # Tells screen readers which language to read in. (fluidPage(lang = ...) has no
+    # effect here, because Rhino wraps this UI in its own page.)
+    shiny$tags$head(shiny$tags$script("document.documentElement.lang = 'en';")),
 
     # Colours and font for the whole app (card styles live in app/styles/main.scss)
     theme = bslib$bs_theme(
@@ -95,7 +98,7 @@ ui <- function(id) {
       shiny$tabPanel(
         "questionnaire",
         shiny$div(
-          class = "questionnaire-page",
+          class = "questionnaire-page narrow",
           page_header(
             info_id = ns("experiment_info"), # chips: user, date, experiment
             start_over_id = ns("start_over_experiment")
@@ -254,7 +257,7 @@ server <- function(id) {
       )
       save_response(response, responses_file)
       responses(rbind(responses(), response))
-      shiny$showNotification("Thanks! Your answer was saved.", type = "message")
+      # The confirmation is shown in the form itself (see insert_product.R).
     }
 
     # One module per experiment; each returns its answer after Submit.

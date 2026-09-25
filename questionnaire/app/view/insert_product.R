@@ -13,10 +13,12 @@ ui <- function(id) {
   shiny$div(
     class = "app-card",
     shiny$h3(shiny$icon("box-open"), "Which product did you use?"),
-    shiny$selectInput(ns("product"), "Product", choices = NULL, width = "100%"),
-    shiny$selectInput(ns("lot"), "Lot", choices = NULL, width = "100%"),
+    shiny$selectInput(ns("product"), "Product", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
     shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
-    shiny$actionButton(ns("submit"), "Submit", class = "btn-primary", icon = shiny$icon("check"))
+    shiny$actionButton(ns("submit"), "Submit", class = "btn-primary", icon = shiny$icon("check")),
+    # Confirmation after saving; screen readers read it out (it is a live region).
+    shiny$div(class = "form-success", shiny$textOutput(ns("saved")))
   )
 }
 
@@ -58,8 +60,15 @@ server <- function(id, product_id) {
       ""
     })
 
-    # After a successful submit, empty the form so the same answer isn't saved twice.
+    # After a successful submit, confirm it and empty the form so the same answer
+    # isn't saved twice. The confirmation goes away when the user starts a new answer.
+    saved_message <- shiny$reactiveVal("")
+    shiny$observeEvent(input$product, if (input$product != "") saved_message(""))
+    output$saved <- shiny$renderText(saved_message())
+
     shiny$observeEvent(submission(), {
+      answer <- submission()
+      saved_message(paste0("Answer saved: ", answer$product, ", lot ", answer$lot, "."))
       shiny$updateSelectInput(session, "product", selected = "")
       shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = ""), selected = "")
     })

@@ -11,8 +11,11 @@ ui <- function(id) {
     shiny$div(class = "landing-icon", shiny$icon("flask")),
     shiny$h2("Welcome!"),
     shiny$p(class = "subtitle", "Tell us about your experiment to get started."),
-    shiny$selectInput(ns("name"), "Your name", choices = NULL, width = "100%"),
-    shiny$dateInput(ns("experiment_date"), "Experiment date", value = Sys.Date(), width = "100%"),
+    shiny$selectInput(ns("name"), "Your name", choices = NULL, selectize = FALSE, width = "100%"),
+    # No future dates: records can only be for today or earlier.
+    shiny$dateInput(ns("experiment_date"), "Experiment date",
+      value = Sys.Date(), max = Sys.Date(), width = "100%"
+    ),
     shiny$radioButtons(ns("first_run"), "Is this the first run of the day?",
       choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
     ),
@@ -20,7 +23,9 @@ ui <- function(id) {
     shiny$conditionalPanel(
       condition = "input.first_run == 'no'",
       ns = ns,
-      shiny$selectInput(ns("experiment_type"), "Type of experiment", choices = NULL, width = "100%")
+      shiny$selectInput(ns("experiment_type"), "Type of experiment",
+        choices = NULL, selectize = FALSE, width = "100%"
+      )
     ),
     shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
     shiny$actionButton(ns("start"), "Start",
@@ -54,6 +59,10 @@ server <- function(id, people, experiment_type) {
         shiny$need(
           shiny$isTruthy(input$experiment_date),
           "Please choose the experiment date."
+        ),
+        shiny$need(
+          !shiny$isTruthy(input$experiment_date) || input$experiment_date <= Sys.Date(),
+          "The experiment date can't be in the future."
         ),
         shiny$need(
           shiny$isTruthy(input$first_run),
