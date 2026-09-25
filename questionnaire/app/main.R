@@ -12,6 +12,8 @@ box::use(
   app/view/landing,
   app/view/insert_product,
   app/view/responses_table,
+  app/view/detection_capability,
+  app/view/linearity,
 )
 
 #' @export
@@ -46,10 +48,13 @@ ui <- function(id) {
             shiny$h2("Lab Documentation Prototype"),
             shiny$uiOutput(ns("experiment_info")) # 👈 the chips go here
           ),
-          shiny$fluidRow(
-            shiny$column(5, insert_product$ui(ns("form"))), # left: form
-            shiny$column(7, responses_table$ui(ns("responses"))) # right: table
-          )
+          shiny$tabsetPanel(
+            id = ns("experiment_pages"),
+            type = "hidden",
+            shiny$tabPanel("Detection Capability", detection_capability$ui(ns("detection_capability"))),
+            shiny$tabPanel("Linearity", linearity$ui(ns("linearity")))
+          ),
+          responses_table$ui(ns("responses"))
         )
       )
     )
@@ -82,20 +87,18 @@ server <- function(id) {
     })
 
     shiny$observeEvent(experiment(), {
-      shiny$updateTabsetPanel(session,
-        "pages",
-        selected = "questionnaire"
-      )
+      info <- experiment()
+      shiny$updateTabsetPanel(session, "experiment_pages", selected = info$experiment_type)
+      shiny$updateTabsetPanel(session, "pages", selected = "questionnaire")
     })
+    
 
     # Holds every answer; starts with whatever was saved on previous runs.
     responses <- shiny$reactiveVal(load_responses(responses_file))
 
-    submission <- insert_product$server("form",
-      product_id = read_products(products_file)
-    )
-
-    shiny$observeEvent(submission(), {
+    product_id <- read_products(products_file)
+    
+    save_answer <- function(answer) {
       info <- experiment()
       answer <- submission()
       response <- new_response(
@@ -108,7 +111,13 @@ server <- function(id) {
       save_response(response, responses_file)
       responses(rbind(responses(), response))
       shiny$showNotification("Thanks! Your answer was saved.", type = "message")
-    })
+    }
+    
+    detection_submission <- detection_capability$server("detection_capability", product_id = product_id)
+    linearity_submission <- linearity$server("linearity", product_id = product_id)
+    
+    shiny$observeEvent(detection_submission(), save_answer(detection_submission()))
+    shiny$observeEvent(linearity_submission(), save_answer(linearity_submission()))
 
     responses_table$server("responses", responses = responses)
   })
