@@ -10,7 +10,7 @@ box::use(
   app/logic/products[read_products],
   app/logic/responses[load_responses, new_response, save_response],
   app/view/landing,
-  app/view/questionnaire,
+  app/view/insert_product,
   app/view/responses_table,
 )
 
@@ -47,7 +47,7 @@ ui <- function(id) {
             shiny$uiOutput(ns("experiment_info")) # 👈 the chips go here
           ),
           shiny$fluidRow(
-            shiny$column(5, questionnaire$ui(ns("form"))), # left: form
+            shiny$column(5, insert_product$ui(ns("form"))), # left: form
             shiny$column(7, responses_table$ui(ns("responses"))) # right: table
           )
         )
@@ -91,13 +91,20 @@ server <- function(id) {
     # Holds every answer; starts with whatever was saved on previous runs.
     responses <- shiny$reactiveVal(load_responses(responses_file))
 
-    submission <- questionnaire$server("form",
+    submission <- insert_product$server("form",
       product_id = read_products(products_file)
     )
 
     shiny$observeEvent(submission(), {
+      info <- experiment()
       answer <- submission()
-      response <- new_response(answer$product, answer$lot, answer$date)
+      response <- new_response(
+        experiment_date = info$experiment_date,
+        user = info$name,
+        experiment = info$experiment_type,
+        product = answer$product,
+        lot = answer$lot)
+      
       save_response(response, responses_file)
       responses(rbind(responses(), response))
       shiny$showNotification("Thanks! Your answer was saved.", type = "message")
