@@ -1,7 +1,7 @@
 // to run: rhino::build_sass()
 // ---- Colours and sizes used in more than one place ----
-$primary: #2f6f73;
-$primary-soft: #e3efef;
+$primary: #004195; // Sebia blue
+$primary-soft: #e0e8f2; // light tint of the same blue
 $text: #1f2933;
 $text-muted: #5f6b78; // secondary text; at least 4.5:1 on white
 $border: #c9d1d9;
@@ -333,4 +333,11 @@ $touch: 48px; // minimum height of anything you tap (tablet at the bench, maybe 
   dd {
     margin: 0;
   }
+}
+
+// "Saved" messages in the app's blue instead of Bootstrap's cyan
+.shiny-notification-message {
+  background: $primary-soft;
+  border: 1px solid rgba($primary, 0.25);
+  color: $primary;
 }

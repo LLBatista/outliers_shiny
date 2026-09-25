@@ -58,7 +58,7 @@ ui <- function(id) {
     # Colours and font for the whole app (card styles live in app/styles/main.scss)
     theme = bslib$bs_theme(
       version = 5,
-      primary = "#2f6f73", # buttons and accents
+      primary = "#004195", # buttons and accents (Sebia blue)
       bg = "#f4f6f8", # page background
       fg = "#1f2933", # text colour
       base_font = bslib$font_collection(
