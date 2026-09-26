@@ -233,12 +233,12 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
       <p class="lede">A tablet app for documenting lab work at the bench. It covers the daily instrument check (first run of the day) and experiment answers (which instrument, product and lot were used). It will run in Docker on a local server.</p>
     </div>
     <div class="meta">
-      <span>Updated <strong>25 Sep 2026</strong></span>
+      <span>Updated <strong>26 Sep 2026</strong></span>
       <span>Repository <strong class="mono">LLBatista/outliers_shiny</strong></span>
       <span>Branch <strong class="mono">claude/shiny-questionnaire-app-q0cycc</strong></span>
     </div>
     <div class="tally" aria-label="Summary">
-      <div class="t-done"><b>11</b> milestones done</div>
+      <div class="t-done"><b>12</b> milestones done</div>
       <div class="t-open"><b>10</b> tasks open</div>
       <div class="t-ask"><b>3</b> decisions needed</div>
     </div>
@@ -275,13 +275,14 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
             <span class="tag">Page 2a · First run</span>
             <h3>Daily instrument check</h3>
             <ol class="steps">
-              <li><span><strong>Instrument:</strong> shows the software and firmware versions. The user can correct them if they are wrong.</span></li>
+              <li><span><strong>Instrument:</strong> shows the software and firmware versions. Corrections are saved when the user presses Confirm.</span></li>
               <li><span><strong>Positive control:</strong> lot, valid? The rerun is asked about only if the control was not valid.</span></li>
               <li><span><strong>Negative control:</strong> the same questions.</span></li>
             </ol>
             <ul>
               <li>One check per instrument per day. This holds even when two people save at the same time.</li>
               <li>Missing control lots can be added.</li>
+              <li>At the end, "Continue to an experiment" leads straight on.</li>
             </ul>
             <div class="file mono">→ data/daily_checks.csv</div>
           </article>
@@ -301,7 +302,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
 
       <section id="changelog">
         <h2>Change log: who changed what, and when</h2>
-        <p>The base lists (instruments, controls, products) are never edited by the app. Corrections are written to a separate log, and the app shows the base lists with the logged changes applied. For versions, the latest change wins. Changes take effect immediately for everyone; there is no approval step yet.</p>
+        <p>The base lists (instruments, controls, products) are never edited by the app. Corrections are written to a separate log, and the app shows the base lists with the logged changes applied. For versions, the latest change wins. Every change asks for confirmation first, the app shows who made it and when, and it can be undone ("Undo this change", "Remove this lot"). An undo is logged as a new change; nothing is deleted. There is no approval by a second person.</p>
         <div class="callout">
           <div class="mono" style="font-size:0.85rem">data/change_log.csv, rows from the test run</div>
           <div class="scroll">
@@ -386,7 +387,8 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
           <li><span class="when">Polish</span><span>Tuned for tablet use at the bench, in Sebia blue.</span></li>
           <li><span class="when">UX review</span><span>Two rounds: date rules, contrast, dropdowns, announcements, daily status, own answers, focus.</span></li>
           <li><span class="when">Fix</span><span>No duplicate daily checks when two people save at once.</span></li>
-          <li><span class="when">Latest</span><span>Experiments only on checked instruments. Version corrections and new lots are logged with user and time.</span></li>
+          <li><span class="when">Change log</span><span>Experiments only on checked instruments. Version corrections and new lots are logged with user and time.</span></li>
+          <li><span class="when">Latest</span><span>UX critique fixes: versions saved by Confirm, confirmed and undoable changes with visible history, "Continue to an experiment", errors under their fields, page titles that name the page.</span></li>
         </ol>
       </section>
 

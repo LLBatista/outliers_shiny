@@ -109,6 +109,10 @@ $size-display: 2rem; // "Welcome!"
     font-size: $size-page;
     margin: 0;
   }
+
+  .btn {
+    white-space: nowrap;
+  }
 }
 
 // The little "pills" showing name, date and experiment
@@ -249,6 +253,7 @@ select.shiny-input-select {
 // "Answer saved: ..." under the Submit button
 .form-success .shiny-text-output:not(:empty) {
   margin-top: 1rem;
+  margin-bottom: 0.75rem;
   color: $primary;
   font-weight: 600;
 }
@@ -354,6 +359,7 @@ select.shiny-input-select {
 // Back / Next buttons: Back on the left, the main button on the right
 .step-buttons {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.75rem;
   margin-top: 0.75rem;
@@ -475,4 +481,95 @@ select.shiny-input-select {
   i {
     color: $primary;
   }
+}
+
+// ---- Secondary buttons: white, tinted blue on hover (not Bootstrap's dark grey) ----
+// (Shiny gives every button "btn-default", so the primary and link ones are excluded.)
+.btn-default:not(.btn-primary):not(.btn-link),
+.btn-outline-secondary {
+  background-color: white;
+  border-color: $border;
+  color: $text;
+
+  &:hover,
+  &:active,
+  &.active {
+    background-color: $primary-soft !important;
+    border-color: $primary !important;
+    color: $primary !important;
+  }
+}
+
+// ---- Errors under the field they are about (see app/view/field_errors.R) ----
+.field-error:not(:empty) {
+  margin: -0.5rem 0 1rem;
+  color: $error;
+  font-weight: 600;
+  font-size: $size-small;
+}
+
+select.field-invalid,
+input.field-invalid,
+.shiny-date-input.field-invalid input {
+  border-color: $error !important;
+  box-shadow: 0 0 0 1px $error;
+}
+
+.shiny-input-radiogroup.field-invalid .radio-inline {
+  border-color: $error;
+}
+
+// ---- Who changed something, with an undo/remove action next to it ----
+.change-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1rem;
+  margin: -0.25rem 0 0.5rem;
+  font-size: $size-small;
+  color: $text-muted;
+
+  i {
+    color: $primary;
+    margin-right: 0.4rem;
+  }
+
+  .btn-link {
+    min-height: $touch;
+    padding: 0;
+    border: 0;
+    background: none !important;
+    box-shadow: none;
+    font-size: $size-small;
+    font-weight: 600;
+    color: $primary;
+    text-underline-offset: 3px;
+  }
+}
+
+// A short explanation inside a "change-box"
+.change-hint {
+  margin: 0 0 1rem;
+  font-size: $size-small;
+  color: $text-muted-on-tint;
+}
+
+// ---- "Add lot B7 to Positive Control for everyone?" and similar questions ----
+.confirm-box {
+  background: white;
+  border: 1px solid $primary;
+  border-radius: $radius;
+  padding: 1rem;
+  margin: 0 0 1rem;
+
+  .confirm-question {
+    margin: 0 0 0.75rem;
+    font-weight: 600;
+  }
+}
+
+.confirm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }

@@ -5,7 +5,8 @@ box::use(
 
 box::use(
   app/logic/products[lots_for_product],
-  app/view/add_lot,
+  app/view/field_errors,
+  app/view/lot_changes,
 )
 
 #' @export
@@ -13,20 +14,22 @@ ui <- function(id) {
   ns <- shiny$NS(id)
   shiny$div(
     class = "app-card",
-    shiny$h3(shiny$icon("box-open"), "Which product did you use?"),
+    shiny$h3(shiny$icon("box-open"), "Instrument, product and lot"),
     # Only instruments with a daily check on the chosen date can be used.
     shiny$selectInput(ns("instrument"), "Instrument",
       choices = NULL, selectize = FALSE, width = "100%"
     ),
+    field_errors$message_ui(ns("instrument")),
     shiny$uiOutput(ns("no_instrument")),
     shiny$selectInput(ns("product"), "Product", choices = NULL, selectize = FALSE, width = "100%"),
+    field_errors$message_ui(ns("product")),
     shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
+    field_errors$message_ui(ns("lot")),
     shiny$conditionalPanel(
       condition = "input.product != ''",
       ns = ns,
-      add_lot$ui(ns("add_lot"))
+      lot_changes$ui(ns("lot_changes"))
     ),
-    shiny$div(class = "form-message", shiny$textOutput(ns("message"))),
     shiny$actionButton(ns("submit"), "Save answer",
       class = "btn-primary", icon = shiny$icon("check")
     ),
@@ -40,10 +43,12 @@ ui <- function(id) {
 #' - `product_id()`: table with the columns product and lot (reactive: it grows
 #'   when a lot is added)
 #' - `checked_instruments()`: instruments with a daily check on the chosen date
-#' - `add_product_lot(product, lot)`: saves and logs a product lot that was not listed
+#' - `changes()`: the change log (to show who added a lot)
+#' - `add_product_lot(product, lot)`, `remove_product_lot(product, lot)`: lot changes
 #' Returns a reactive that holds the latest saved answer.
 #' @export
-server <- function(id, product_id, checked_instruments, add_product_lot) {
+server <- function(id, product_id, checked_instruments, changes, add_product_lot,
+                   remove_product_lot) {
   shiny$moduleServer(id, function(input, output, session) {
     # --- Instrument: only the ones checked on the chosen date -------------------
     shiny$observeEvent(checked_instruments(), ignoreNULL = FALSE, {
@@ -88,16 +93,23 @@ server <- function(id, product_id, checked_instruments, add_product_lot) {
 
     # Only the lots of the chosen product.
     shiny$observeEvent(lots(), ignoreNULL = FALSE, {
+      current <- shiny$isolate(chosen_lot())
       shiny$updateSelectInput(session, "lot",
         choices = c("Choose a lot..." = "", lots()),
-        selected = shiny$isolate(chosen_lot())
+        selected = if (current %in% lots()) current else ""
       )
     })
 
-    # "Lot not listed? Add it": once added, the new lot is selected.
-    added <- add_lot$server("add_lot",
+    # Who added the chosen lot, "Remove this lot" and "Lot not listed? Add it".
+    # Once added, the new lot is selected.
+    added <- lot_changes$server("lot_changes",
       existing = lots,
-      add = function(lot) add_product_lot(input$product, lot)
+      item = shiny$reactive(input$product),
+      selected = shiny$reactive(input$lot),
+      changes = changes,
+      what = "product",
+      add = add_product_lot,
+      remove = remove_product_lot
     )
     shiny$observeEvent(added(), {
       chosen_lot(added())
@@ -108,32 +120,21 @@ server <- function(id, product_id, checked_instruments, add_product_lot) {
     })
 
     # --- Saving ----------------------------------------------------------------------
-    # Error messages: shown after a click on Save, hidden again when an answer changes.
-    show_message <- shiny$reactiveVal(FALSE)
-    shiny$observeEvent(input$submit, show_message(TRUE))
-    shiny$observeEvent(list(input$instrument, input$product, input$lot), show_message(FALSE),
-      ignoreInit = TRUE
-    )
+    # Each message is shown under its field and removed when the field changes.
+    field_errors$clear_on_change(input, session, c("instrument", "product", "lot"))
 
     submission <- shiny$eventReactive(input$submit, {
-      shiny$validate(
-        shiny$need(
-          shiny$isTruthy(input$instrument),
-          "Please choose the instrument (only instruments with a daily check on this date)."
-        ),
-        shiny$need(
-          !shiny$isTruthy(input$instrument) || input$instrument %in% checked_instruments(),
-          "This instrument has no daily check on this date."
-        ),
-        shiny$need(shiny$isTruthy(input$product), "Please choose a product."),
-        shiny$need(shiny$isTruthy(input$lot), "Please choose a lot.")
-      )
+      instrument_error <- if (!shiny$isTruthy(input$instrument)) {
+        "Please choose the instrument (only instruments with a daily check on this date)."
+      } else if (!(input$instrument %in% checked_instruments())) {
+        "This instrument has no daily check on this date."
+      }
+      shiny$req(field_errors$show(session, list(
+        instrument = instrument_error,
+        product = if (!shiny$isTruthy(input$product)) "Please choose a product.",
+        lot = if (!shiny$isTruthy(input$lot)) "Please choose a lot."
+      )))
       list(instrument = input$instrument, product = input$product, lot = input$lot)
-    })
-
-    output$message <- shiny$renderText({
-      if (show_message()) submission()
-      ""
     })
 
     # After a successful save, confirm it and empty product and lot so the same

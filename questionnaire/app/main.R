@@ -21,7 +21,9 @@ box::use(
 )
 
 box::use(
-  app/logic/changes[add_logged_lots, apply_version_changes, log_change, read_changes],
+  app/logic/changes[
+    add_logged_lots, apply_version_changes, log_change, new_change_id, read_changes
+  ],
   app/logic/daily_checks[
     already_checked, load_daily_checks, new_daily_checks, read_controls, read_instruments
   ],
@@ -47,20 +49,54 @@ focus_script <- shiny$tags$script(shiny$HTML("
   Shiny.addCustomMessageHandler('focus-element', function(id) {
     setTimeout(function() {
       var el = document.getElementById(id);
-      if (el) { el.setAttribute('tabindex', '-1'); el.focus(); }
+      if (!el) return;
+      if (!el.matches('input, select, textarea, button, a')) el.setAttribute('tabindex', '-1');
+      el.focus();
     }, 60);
   });
 "))
 
-# The header of the second pages: title, "Start over" button and the chips.
-page_header <- function(heading_id, info_id, start_over_id) {
+# Shows error messages under their fields (see app/view/field_errors.R): fills the
+# message, marks the field (red border; aria-invalid and aria-describedby for screen
+# readers) and moves focus to the first field with an error.
+field_errors_script <- shiny$tags$script(shiny$HTML("
+  Shiny.addCustomMessageHandler('field-errors', function(msg) {
+    var first = null;
+    msg.ids.forEach(function(id, i) {
+      var text = msg.messages[i];
+      var field = document.getElementById(id);
+      var box = document.getElementById(id + '-error');
+      if (box) box.textContent = text;
+      if (!field) return;
+      field.classList.toggle('field-invalid', text !== '');
+      if (text) {
+        field.setAttribute('aria-invalid', 'true');
+        field.setAttribute('aria-describedby', id + '-error');
+        if (!first) first = field;
+      } else {
+        field.removeAttribute('aria-invalid');
+        field.removeAttribute('aria-describedby');
+      }
+    });
+    if (first && msg.focus) {
+      var details = first.closest('details');
+      if (details) details.open = true;
+      var target = first.matches('input, select, textarea') ? first : first.querySelector('input');
+      if (target) target.focus();
+    }
+  });
+"))
+
+# The header of the second pages: the page title, a button back to the landing page
+# (to change the name, date or experiment) and the chips with name and date.
+page_header <- function(heading_id, title, info_id, back_id) {
   shiny$div(
     class = "page-header",
     shiny$div(
       class = "page-header-row",
-      shiny$h2(id = heading_id, "Lab Documentation Prototype"),
-      shiny$actionButton(start_over_id, "Start over",
-        class = "btn-outline-secondary", icon = shiny$icon("rotate-left")
+      shiny$h2(id = heading_id, title),
+      shiny$actionButton(back_id, "Change details",
+        class = "btn-outline-secondary", icon = shiny$icon("pen-to-square")
       )
     ),
     shiny$uiOutput(info_id)
@@ -89,6 +125,7 @@ ui <- function(id) {
     ),
 
     focus_script,
+    field_errors_script,
 
     # The pages of the app. `type = "hidden"` hides the tab buttons:
     # the server decides which page is shown (see "Routing" below).
@@ -109,8 +146,9 @@ ui <- function(id) {
           class = "questionnaire-page narrow",
           page_header(
             heading_id = ns("daily_heading"),
-            info_id = ns("daily_info"), # chips: user, date, "first run"
-            start_over_id = ns("start_over_daily")
+            title = "First run of the day",
+            info_id = ns("daily_info"), # chips: user, date
+            back_id = ns("change_details_daily")
           ),
           daily_check$ui(ns("daily_check"))
         )
@@ -123,8 +161,9 @@ ui <- function(id) {
           class = "questionnaire-page narrow",
           page_header(
             heading_id = ns("experiment_heading"),
-            info_id = ns("experiment_info"), # chips: user, date, experiment
-            start_over_id = ns("start_over_experiment")
+            title = shiny$textOutput(ns("experiment_title"), inline = TRUE), # e.g. "Linearity"
+            info_id = ns("experiment_info"), # chips: user, date
+            back_id = ns("change_details_experiment")
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
           shiny$tabsetPanel(
@@ -186,8 +225,12 @@ server <- function(id) {
     products <- shiny$reactive(add_logged_lots(base_products, changes(), "product", "product"))
 
     # Logs one change with the user's name (from the landing page) and the time.
-    record_change <- function(what, item, field, old_value, new_value) {
-      log_change(changes_file, experiment()$name, what, item, field, old_value, new_value)
+    # Rows logged by one action share a change_id, so they can be undone together.
+    record_change <- function(what, item, field, old_value, new_value,
+                              change_id = new_change_id()) {
+      log_change(changes_file, experiment()$name, what, item, field, old_value, new_value,
+        change_id = change_id
+      )
       change_saved(change_saved() + 1)
     }
 
@@ -196,15 +239,35 @@ server <- function(id) {
       current <- shiny$isolate(instruments())
       current <- current[current$instrument == instrument, ]
       new_values <- c(software_version = software, firmware_version = firmware)
+      change_id <- new_change_id()
       for (field in names(new_values)) {
         if (!identical(current[[field]][1], new_values[[field]])) {
-          record_change("instrument", instrument, field, current[[field]][1], new_values[[field]])
+          record_change("instrument", instrument, field, current[[field]][1], new_values[[field]],
+            change_id = change_id
+          )
         }
+      }
+    }
+
+    # Undoing a version change logs the opposite change (the log itself is never edited).
+    undo_versions <- function(change) {
+      change_id <- new_change_id()
+      for (i in seq_len(nrow(change))) {
+        record_change("instrument", change$item[i], change$field[i],
+          change$new_value[i], change$old_value[i],
+          change_id = change_id
+        )
       }
     }
 
     add_control_lot <- function(control, lot) record_change("control", control, "lot", "", lot)
     add_product_lot <- function(product, lot) record_change("product", product, "lot", "", lot)
+    remove_control_lot <- function(control, lot) {
+      record_change("control", control, "lot_removed", lot, "")
+    }
+    remove_product_lot <- function(product, lot) {
+      record_change("product", product, "lot_removed", lot, "")
+    }
 
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
@@ -228,11 +291,19 @@ server <- function(id) {
 
     # `experiment()` holds what the user chose on the landing page:
     # name, experiment_date, first_run (TRUE/FALSE) and experiment_type.
+    # Sets "Is this the first run of the day?" when going back to the landing page:
+    # cleared after "Change details", "No" after "Continue to an experiment".
+    first_run_answer <- shiny$reactiveVal(list(answer = NULL, n = 0))
+    set_first_run <- function(answer) {
+      first_run_answer(list(answer = answer, n = first_run_answer()$n + 1))
+    }
+
     experiment <- landing$server("landing",
       people = people,
       experiment_type = experiment_types,
       instruments = base_instruments$instrument,
-      checked_on = checked_on
+      checked_on = checked_on,
+      first_run_answer = first_run_answer
     )
 
     # When the user clicks Start, show the right second page.
@@ -248,38 +319,42 @@ server <- function(id) {
       }
     })
 
-    # "Start over" (on both second pages) goes back to the landing page, where
-    # the user can change their name, the date or the experiment.
-    shiny$observeEvent(list(input$start_over_daily, input$start_over_experiment),
+    # "Change details" (on both second pages) goes back to the landing page, where
+    # the user can change their name, the date or the experiment. The first-run
+    # question is asked again, so an old answer is not reused by mistake.
+    shiny$observeEvent(list(input$change_details_daily, input$change_details_experiment),
       {
+        set_first_run(NULL)
         shiny$updateTabsetPanel(session, "pages", selected = "landing")
         session$sendCustomMessage("focus-element", session$ns("landing-title"))
       },
       ignoreInit = TRUE
     )
 
+    # "Continue to an experiment" (after a daily check): back to the landing page with
+    # "No" already chosen, and focus on the experiment list.
+    continue_to_experiment <- function() {
+      set_first_run("no")
+      shiny$updateTabsetPanel(session, "pages", selected = "landing")
+    }
+
     # ------------------------------------------------------------------------
     # 3. Page headers: the "chips" under the title
     # ------------------------------------------------------------------------
-    output$daily_info <- shiny$renderUI({
+    info_chips <- function() {
       info <- experiment()
       shiny$div(
         class = "info-chips",
         shiny$span(class = "chip", shiny$icon("user"), info$name),
-        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", shiny$icon("sun"), "First run of the day")
+        shiny$span(
+          class = "chip", shiny$icon("calendar"),
+          format(as.Date(info$experiment_date), "%d %b %Y")
+        )
       )
-    })
-
-    output$experiment_info <- shiny$renderUI({
-      info <- experiment()
-      shiny$div(
-        class = "info-chips",
-        shiny$span(class = "chip", shiny$icon("user"), info$name),
-        shiny$span(class = "chip", shiny$icon("calendar"), format(info$experiment_date)),
-        shiny$span(class = "chip", shiny$icon("flask"), info$experiment_type)
-      )
-    })
+    }
+    output$daily_info <- shiny$renderUI(info_chips())
+    output$experiment_info <- shiny$renderUI(info_chips())
+    output$experiment_title <- shiny$renderText(experiment()$experiment_type)
 
     # ------------------------------------------------------------------------
     # 4. First run of the day (daily check)
@@ -325,8 +400,12 @@ server <- function(id) {
       is_already_checked = is_already_checked,
       save_check = save_daily_check,
       start = experiment,
+      changes = changes,
       change_versions = change_versions,
-      add_control_lot = add_control_lot
+      undo_versions = undo_versions,
+      add_control_lot = add_control_lot,
+      remove_control_lot = remove_control_lot,
+      continue_to_experiment = continue_to_experiment
     )
 
     # ------------------------------------------------------------------------
@@ -362,12 +441,16 @@ server <- function(id) {
     detection_submission <- detection_capability$server("detection_capability",
       product_id = products,
       checked_instruments = checked_instruments,
-      add_product_lot = add_product_lot
+      changes = changes,
+      add_product_lot = add_product_lot,
+      remove_product_lot = remove_product_lot
     )
     linearity_submission <- linearity$server("linearity",
       product_id = products,
       checked_instruments = checked_instruments,
-      add_product_lot = add_product_lot
+      changes = changes,
+      add_product_lot = add_product_lot,
+      remove_product_lot = remove_product_lot
     )
 
     shiny$observeEvent(detection_submission(), save_answer(detection_submission()))

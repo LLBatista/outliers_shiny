@@ -16,12 +16,9 @@ ui <- function(id) {
 
 #' Passes everything on to the product form (see insert_product.R).
 #' @export
-server <- function(id, product_id, checked_instruments, add_product_lot) {
+server <- function(id, ...) {
+  args <- list(...)
   shiny$moduleServer(id, function(input, output, session) {
-    insert_product$server("product",
-      product_id = product_id,
-      checked_instruments = checked_instruments,
-      add_product_lot = add_product_lot
-    )
+    do.call(insert_product$server, c(list("product"), args))
   })
 }

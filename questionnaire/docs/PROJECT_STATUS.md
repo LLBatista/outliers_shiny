@@ -1,6 +1,6 @@
 # Lab Documentation Prototype: project status
 
-Last updated: 2026-09-25 · Branch: `claude/shiny-questionnaire-app-q0cycc`
+Last updated: 2026-09-26 · Branch: `claude/shiny-questionnaire-app-q0cycc`
 
 **In one sentence:** a Shiny + Rhino app for documenting lab work on a tablet at
 the bench. It covers the daily instrument check (first run of the day) and
@@ -21,11 +21,13 @@ This is a step-by-step form with a progress indicator.
 
 1. **Instrument.** The user picks the instrument, and the app shows its software and
    firmware versions.
-   - If the versions are wrong, **"Versions not right? Enter the correct ones"** lets
-     the user correct them. The correction is logged.
+   - If the versions are wrong, **"Versions not right? Correct them here"** lets the
+     user type the right ones. They are saved and logged when the user presses Confirm.
    - "Confirm" is blocked if this instrument was already checked on this date.
 2. **Positive control.** The user picks the lot, says whether the control was valid,
    and says whether the rerun was valid (asked only if the control was not valid).
+- At the end: "Continue to an experiment" (goes to the landing page with "No" chosen)
+  or "Check another instrument".
 3. **Negative control.** Same questions as the positive control.
 - **"Lot not listed? Add it"** is available for both controls, and the new lot is logged.
 - A summary appears at the end, with "Check another instrument".
@@ -51,7 +53,13 @@ This is a step-by-step form with a progress indicator.
   columns: `changed_at, user, what, item, field, old_value, new_value`.
 - The app shows the base lists with the logged changes applied. For versions, the
   latest change wins.
-- Changes take effect **immediately for everyone**, with no approval step.
+- Every change asks for **confirmation** first ("Add lot B7 to Positive Control for
+  everyone?").
+- The app shows **who made a change and when**, under the versions ("Last changed by …")
+  and under a lot that was added in the app.
+- Changes can be **undone**: "Undo this change" for versions, "Remove this lot" for added
+  lots. The undo is logged as a new change; nothing is deleted from the log.
+- There is no approval by a second person.
 
 ### Look and usability
 - The colour is Sebia blue (`#004195`).
@@ -129,6 +137,13 @@ time a row is saved.
 10. Fix: no duplicate daily checks when two people save at once.
 11. Experiments only on checked instruments. Logged version corrections and lot
     additions.
+12. Fixes from a UX critique:
+    - corrected versions are saved by Confirm, so they can't be lost;
+    - changes are confirmed, show who made them, and can be undone;
+    - "Continue to an experiment" after the daily check; "Change details" instead of
+      "Start over";
+    - error messages under their fields;
+    - page titles name the page.
 
 ---
 
