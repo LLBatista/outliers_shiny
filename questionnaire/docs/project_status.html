@@ -267,7 +267,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
             <h3>Who, when, what</h3>
             <ul>
               <li>The user picks their name and the date (future dates are not allowed).</li>
-              <li>They answer whether this is the first run of the day. If it isn't, they also pick the experiment type.</li>
+              <li>They answer whether this is the first run of the day. If it isn't, they also pick the experiment type and the type of run (regular, retest or pre-test), which is saved with every answer.</li>
               <li>A status box shows which instruments already had their daily check on that date.</li>
             </ul>
           </article>
@@ -366,7 +366,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
               <tr><td class="mono">instruments.csv</td><td>Instrument, software and firmware version</td><td><span class="pill yes">yes</span></td></tr>
               <tr><td class="mono">controls.csv, products.csv</td><td>Name and lot</td><td><span class="pill yes">yes</span></td></tr>
               <tr><td class="mono">daily_checks.csv</td><td>One row per instrument per day, with who and when</td><td><span class="pill no">no</span></td></tr>
-              <tr><td class="mono">responses.csv</td><td>Experiment answers, with instrument and time</td><td><span class="pill no">no</span></td></tr>
+              <tr><td class="mono">responses.csv</td><td>Experiment answers, with type of run, instrument and time</td><td><span class="pill no">no</span></td></tr>
               <tr><td class="mono">change_log.csv</td><td>Corrections and added lots, with who and when</td><td><span class="pill no">no</span></td></tr>
             </tbody>
           </table>

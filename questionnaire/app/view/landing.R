@@ -7,6 +7,9 @@ box::use(
   app/view/field_errors,
 )
 
+# Saved with every experiment answer (column run_type in data/responses.csv).
+run_types <- c("Regular", "Retest", "Pre-test")
+
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
@@ -35,11 +38,42 @@ ui <- function(id) {
       shiny$selectInput(ns("experiment_type"), "Type of experiment",
         choices = NULL, selectize = FALSE, width = "100%"
       ),
-      field_errors$message_ui(ns("experiment_type"))
+      field_errors$message_ui(ns("experiment_type")),
+      # Three options: stacked, one per line, so none wraps on its own.
+      shiny$div(
+        class = "stacked-options",
+        shiny$radioButtons(ns("run_type"), "Type of run",
+          choices = run_types, selected = character(0), inline = TRUE
+        )
+      ),
+      field_errors$message_ui(ns("run_type"))
     ),
     shiny$actionButton(ns("start"), "Start",
       class = "btn-primary", icon = shiny$icon("arrow-right")
     )
+  )
+}
+
+# The messages shown when Start is pressed (NULL = no problem with that field).
+start_errors <- function(input) {
+  experiment <- identical(input$first_run, "no")
+  date <- input$experiment_date
+  list(
+    name = if (input$name == "") "Please choose your name.",
+    experiment_date = if (!shiny$isTruthy(date)) {
+      "Please choose the date."
+    } else if (date > Sys.Date()) {
+      "The date can't be in the future."
+    },
+    first_run = if (!shiny$isTruthy(input$first_run)) {
+      "Please say if this is the first run of the day."
+    },
+    experiment_type = if (experiment && input$experiment_type == "") {
+      "Please choose the type of experiment."
+    },
+    run_type = if (experiment && !shiny$isTruthy(input$run_type)) {
+      "Please say if this is a regular run, a retest or a pre-test."
+    }
   )
 }
 
@@ -64,6 +98,8 @@ server <- function(id, people, experiment_type, instruments, checked_on, first_r
       shiny$updateRadioButtons(session, "first_run",
         selected = if (is.null(answer)) character(0) else answer
       )
+      # The type of run is asked again too, so an old answer is not reused by mistake.
+      shiny$updateRadioButtons(session, "run_type", selected = character(0))
       if (identical(answer, "no")) {
         session$sendCustomMessage("focus-element", session$ns("experiment_type"))
       }
@@ -71,30 +107,18 @@ server <- function(id, people, experiment_type, instruments, checked_on, first_r
 
     # Each message is shown under its field and removed when the field changes.
     field_errors$clear_on_change(input, session,
-      c("name", "experiment_date", "first_run", "experiment_type")
+      c("name", "experiment_date", "first_run", "experiment_type", "run_type")
     )
 
     submission <- shiny$eventReactive(input$start, {
-      date <- input$experiment_date
-      shiny$req(field_errors$show(session, list(
-        name = if (input$name == "") "Please choose your name.",
-        experiment_date = if (!shiny$isTruthy(date)) {
-          "Please choose the date."
-        } else if (date > Sys.Date()) {
-          "The date can't be in the future."
-        },
-        first_run = if (!shiny$isTruthy(input$first_run)) {
-          "Please say if this is the first run of the day."
-        },
-        experiment_type = if (identical(input$first_run, "no") && input$experiment_type == "") {
-          "Please choose the type of experiment."
-        }
-      )))
+      shiny$req(field_errors$show(session, start_errors(input)))
+      experiment <- identical(input$first_run, "no")
       list(
         name = input$name,
-        experiment_date = date,
+        experiment_date = input$experiment_date,
         first_run = input$first_run == "yes",
-        experiment_type = input$experiment_type
+        experiment_type = input$experiment_type,
+        run_type = if (experiment) input$run_type else ""
       )
     })
 

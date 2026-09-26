@@ -573,3 +573,12 @@ input.field-invalid,
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+
+// Radio options stacked one per line, full width (e.g. Regular / Retest / Pre-test)
+.stacked-options .shiny-input-radiogroup .shiny-options-group {
+  flex-direction: column;
+
+  .radio-inline {
+    width: 100%;
+  }
+}

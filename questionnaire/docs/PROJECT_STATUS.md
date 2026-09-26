@@ -13,7 +13,8 @@ experiment answers (product and lot used). It will run in Docker on a local serv
 ### Page 1: Landing
 - The user picks **their name**, the **date** (no future dates) and whether this is the
   **first run of the day**.
-- If it is not the first run, they also pick the **type of experiment**.
+- If it is not the first run, they also pick the **type of experiment** and the **type of
+  run**: regular, retest or pre-test. The type of run is saved with every answer.
 - A status box shows **which instruments already had their daily check** on that date.
 
 ### Page 2a: First run of the day (daily check)
@@ -113,7 +114,7 @@ questionnaire/
 | `instruments.csv` | instrument, software_version, firmware_version | yes |
 | `controls.csv`, `products.csv` | name + lot | yes |
 | `daily_checks.csv` | one row per instrument per day, with who and when | no |
-| `responses.csv` | experiment answers, with instrument and when | no |
+| `responses.csv` | experiment answers, with type of run, instrument and when | no |
 | `change_log.csv` | corrections and added lots, with who and when | no |
 | `daily_checks_old_format.csv` | old file from before the step-by-step check | yes |
 

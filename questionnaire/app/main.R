@@ -162,7 +162,7 @@ ui <- function(id) {
           page_header(
             heading_id = ns("experiment_heading"),
             title = shiny$textOutput(ns("experiment_title"), inline = TRUE), # e.g. "Linearity"
-            info_id = ns("experiment_info"), # chips: user, date
+            info_id = ns("experiment_info"), # chips: user, date, type of run
             back_id = ns("change_details_experiment")
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
@@ -341,7 +341,7 @@ server <- function(id) {
     # ------------------------------------------------------------------------
     # 3. Page headers: the "chips" under the title
     # ------------------------------------------------------------------------
-    info_chips <- function() {
+    info_chips <- function(...) {
       info <- experiment()
       shiny$div(
         class = "info-chips",
@@ -349,11 +349,15 @@ server <- function(id) {
         shiny$span(
           class = "chip", shiny$icon("calendar"),
           format(as.Date(info$experiment_date), "%d %b %Y")
-        )
+        ),
+        ...
       )
     }
     output$daily_info <- shiny$renderUI(info_chips())
-    output$experiment_info <- shiny$renderUI(info_chips())
+    # The experiment page also shows the type of run (regular, retest or pre-test).
+    output$experiment_info <- shiny$renderUI(
+      info_chips(shiny$span(class = "chip", shiny$icon("repeat"), experiment()$run_type))
+    )
     output$experiment_title <- shiny$renderText(experiment()$experiment_type)
 
     # ------------------------------------------------------------------------
@@ -421,6 +425,7 @@ server <- function(id) {
         experiment_date = info$experiment_date,
         user = info$name,
         experiment = info$experiment_type,
+        run_type = info$run_type,
         instrument = answer$instrument,
         product = answer$product,
         lot = answer$lot
@@ -462,7 +467,7 @@ server <- function(id) {
       info <- experiment()
       all <- responses()
       mine <- all$date == format(as.Date(info$experiment_date), "%Y-%m-%d") & all$user == info$name
-      all[mine, c("experiment", "instrument", "product", "lot"), drop = FALSE]
+      all[mine, c("experiment", "run_type", "instrument", "product", "lot"), drop = FALSE]
     })
     responses_table$server("responses",
       responses = my_answers,
