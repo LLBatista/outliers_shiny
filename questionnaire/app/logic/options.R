@@ -14,7 +14,7 @@ read_options <- function(path, column) {
   if (!column %in% names(data)) {
     stop(
       "The file ", path,
-      "must have a column called '", column, "'."
+      " must have a column called '", column, "'."
     )
   }
   sort(unique(data[[column]]))

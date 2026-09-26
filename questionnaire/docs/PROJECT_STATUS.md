@@ -171,9 +171,9 @@ time a row is saved.
 - [ ] **Void + re-enter corrections** (already decided). A wrong daily check or answer is
   marked *voided* with who, when and a reason, and the user re-enters it. Voided rows
   should not count for the once-per-day rule, the daily status or the tables.
-- [ ] **Fix the outdated tests.** `test-products.R` (2 tests) and `test-questionnaire.R`
-  (refers to a module that no longer exists) fail. The new tests (`test-changes.R`,
-  `test-responses.R`) pass. Add tests for `daily_checks.R` and `records.R`.
+- [x] **Tests updated.** All 65 tests pass (`rhino::test_r()`): logic (change log,
+  fluids, responses, daily checks, products, options, CSV records) and two form sections
+  (sample preparation, instrument/product/lot).
 - [ ] **Update `README.md`.** It still describes the first simple version of the app.
 
 ### Growth and structure
