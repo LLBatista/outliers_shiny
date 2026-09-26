@@ -7,6 +7,7 @@ box::use(
 
 box::use(
   app/view/field_errors,
+  app/view/inputs,
   app/view/lot_changes,
 )
 
@@ -34,6 +35,7 @@ ui <- function(id, title, next_label) {
       ),
       field_errors$message_ui(ns("rerun_valid"))
     ),
+    inputs$notes(ns("notes"), "Notes about this control (optional)"),
     shiny$div(
       class = "step-buttons",
       shiny$actionButton(ns("back"), "Back", icon = shiny$icon("arrow-left")),
@@ -51,7 +53,7 @@ ui <- function(id, title, next_label) {
 #' - `add_lot(control, lot)`, `remove_lot(control, lot)`: save and log a lot change
 #'
 #' Returns a list with two reactives:
-#' - `result`: the answers (lot, valid, rerun_valid), after the main button is clicked
+#' - `result`: the answers (lot, valid, rerun_valid, notes), after the main button is clicked
 #' - `back`: changes when the Back button is clicked
 #' @export
 server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
@@ -101,6 +103,7 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
         shiny$updateSelectInput(session, "lot", selected = "")
         shiny$updateRadioButtons(session, "valid", selected = character(0))
         shiny$updateRadioButtons(session, "rerun_valid", selected = character(0))
+        shiny$updateTextAreaInput(session, "notes", value = "")
       },
       ignoreInit = TRUE
     )
@@ -117,7 +120,8 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
       list(
         lot = input$lot,
         valid = input$valid,
-        rerun_valid = if (input$valid == "yes") "not needed" else input$rerun_valid
+        rerun_valid = if (input$valid == "yes") "not needed" else input$rerun_valid,
+        notes = inputs$clean_notes(input$notes)
       )
     })
 

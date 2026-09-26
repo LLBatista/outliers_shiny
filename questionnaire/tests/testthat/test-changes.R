@@ -54,3 +54,10 @@ test_that("the last version change groups the rows logged together", {
   expect_equal(last$field, c("software_version", "firmware_version"))
   expect_null(last_version_change(read_changes(path), "A3"))
 })
+
+test_that("a note can be logged with a change", {
+  path <- tempfile(fileext = ".csv")
+  log_change(path, "Ana", "control", "Positive Control", "lot", "", "B7", note = "new box")
+  log_change(path, "Ben", "control", "Positive Control", "lot", "", "B8")
+  expect_equal(read_changes(path)$note, c("new box", ""))
+})

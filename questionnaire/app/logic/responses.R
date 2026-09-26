@@ -8,7 +8,7 @@ answer_columns <- c(
   "instrument", "product", "lot",
   "system_buffer_lot", "system_buffer_expiry", "system_buffer_lot_2", "system_buffer_expiry_2",
   "system_fluid_lot", "system_fluid_expiry", "system_fluid_lot_2", "system_fluid_expiry_2",
-  "samples_vortexed", "samples_thawed", "thaw_minutes"
+  "samples_vortexed", "samples_thawed", "thaw_minutes", "notes"
 )
 
 # The columns of data/responses.csv, in order.
@@ -45,7 +45,8 @@ load_responses <- function(path) {
 #' @export
 answers_for_table <- function(responses) {
   columns <- c(
-    "experiment", "run_type", "instrument", "product", "lot", "fluids", "samples", "saved_at"
+    "experiment", "run_type", "instrument", "product", "lot", "fluids", "samples", "notes",
+    "saved_at"
   )
   if (nrow(responses) == 0) {
     return(read_table(tempfile(), columns))
@@ -73,6 +74,7 @@ answers_for_table <- function(responses) {
     lot = responses$lot,
     fluids = fluids,
     samples = samples,
+    notes = responses$notes,
     saved_at = responses$saved_at,
     stringsAsFactors = FALSE
   )

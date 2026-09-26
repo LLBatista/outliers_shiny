@@ -26,17 +26,18 @@ answer_entry <- function(answer) {
     class = "answer",
     shiny$div(
       class = "answer-main",
-      paste0(answer$product, ", lot ", answer$lot, " – ", answer$instrument)
+      paste0(answer$product, ", lot ", answer$lot, " \u2013 ", answer$instrument)
     ),
     shiny$div(
       class = "answer-meta",
       paste(c(answer$experiment, answer$run_type, if (answer$saved_at != "") {
         paste("saved at", saved_time(answer$saved_at))
-      }), collapse = " · ")
+      }), collapse = " \u00b7 ")
     ),
     if (any(details != "")) {
-      shiny$div(class = "answer-details", paste(details[details != ""], collapse = " · "))
-    }
+      shiny$div(class = "answer-details", paste(details[details != ""], collapse = " \u00b7 "))
+    },
+    if (answer$notes != "") shiny$div(class = "answer-details", paste("Note:", answer$notes))
   )
 }
 

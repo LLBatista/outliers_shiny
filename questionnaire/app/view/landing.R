@@ -39,14 +39,19 @@ ui <- function(id) {
         choices = NULL, selectize = FALSE, width = "100%"
       ),
       field_errors$message_ui(ns("experiment_type")),
-      # Three options: stacked, one per line, so none wraps on its own.
-      shiny$div(
-        class = "stacked-options",
-        shiny$radioButtons(ns("run_type"), "Type of run",
-          choices = run_types, selected = character(0), inline = TRUE
-        )
-      ),
-      field_errors$message_ui(ns("run_type"))
+      # Once the experiment is chosen. "Regular" is chosen already (the usual case).
+      shiny$conditionalPanel(
+        condition = "input.experiment_type != ''",
+        ns = ns,
+        # Three options: stacked, one per line, so none wraps on its own.
+        shiny$div(
+          class = "stacked-options",
+          shiny$radioButtons(ns("run_type"), "Type of run",
+            choices = run_types, selected = "Regular", inline = TRUE
+          )
+        ),
+        field_errors$message_ui(ns("run_type"))
+      )
     ),
     shiny$actionButton(ns("start"), "Start",
       class = "btn-primary", icon = shiny$icon("arrow-right")
@@ -77,14 +82,13 @@ start_errors <- function(input) {
   )
 }
 
-#' `instruments`: names of all instruments.
 #' `checked_on(date)`: returns the instruments that already had a daily check on
 #' that date. It reads reactive data, so the list updates when a check is saved.
 #' `first_run_answer()`: when it changes, "Is this the first run of the day?" is set to
 #' its `answer` ("yes", "no", or NULL to clear it); with "no", focus goes to the
 #' experiment list.
 #' @export
-server <- function(id, people, experiment_type, instruments, checked_on, first_run_answer) {
+server <- function(id, people, experiment_type, checked_on, first_run_answer) {
   shiny$moduleServer(id, function(input, output, session) {
     shiny$updateSelectInput(session, "name",
       choices = c("Choose your name..." = "", people)
@@ -98,8 +102,8 @@ server <- function(id, people, experiment_type, instruments, checked_on, first_r
       shiny$updateRadioButtons(session, "first_run",
         selected = if (is.null(answer)) character(0) else answer
       )
-      # The type of run is asked again too, so an old answer is not reused by mistake.
-      shiny$updateRadioButtons(session, "run_type", selected = character(0))
+      # The type of run goes back to "Regular", so a retest is not reused by mistake.
+      shiny$updateRadioButtons(session, "run_type", selected = "Regular")
       if (identical(answer, "no")) {
         session$sendCustomMessage("focus-element", session$ns("experiment_type"))
       }
@@ -122,26 +126,21 @@ server <- function(id, people, experiment_type, instruments, checked_on, first_r
       )
     })
 
-    # "Daily checks on 25 Sep 2026: Analyzer 01 done, Analyzer 02 not yet"
+    # "Checked on 25 Sep 2026: Analyzer 01" - only the instruments already checked.
     output$daily_status <- shiny$renderUI({
       shiny$req(input$experiment_date)
-      checked <- checked_on(input$experiment_date)
-      items <- lapply(instruments, function(instrument) {
-        done <- instrument %in% checked
-        shiny$tags$li(
-          class = if (done) "done" else "todo",
-          shiny$icon(if (done) "circle-check" else "circle"),
-          shiny$span(instrument),
-          shiny$span(class = "daily-status-state", if (done) "checked" else "not checked yet")
-        )
-      })
+      checked <- sort(checked_on(input$experiment_date))
+      title <- paste("Checked on", format(input$experiment_date, "%d %b %Y"))
       shiny$div(
         class = "daily-status",
-        shiny$p(
-          class = "daily-status-title",
-          paste("Daily checks on", format(input$experiment_date, "%d %b %Y"))
-        ),
-        shiny$tags$ul(items)
+        shiny$p(class = "daily-status-title", title),
+        if (length(checked) == 0) {
+          shiny$p(class = "daily-status-empty", "No instrument has had its daily check yet.")
+        } else {
+          shiny$tags$ul(lapply(checked, function(instrument) {
+            shiny$tags$li(class = "done", shiny$icon("circle-check"), shiny$span(instrument))
+          }))
+        }
       )
     })
 

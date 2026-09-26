@@ -13,9 +13,10 @@ experiment answers (product and lot used). It will run in Docker on a local serv
 ### Page 1: Landing
 - The user picks **their name**, the **date** (no future dates) and whether this is the
   **first run of the day**.
-- If it is not the first run, they also pick the **type of experiment** and the **type of
-  run**: regular, retest or pre-test. The type of run is saved with every answer.
-- A status box shows **which instruments already had their daily check** on that date.
+- If it is not the first run, they also pick the **type of experiment**; then the **type of
+  run** appears, with "Regular" already chosen (or retest / pre-test). It is saved with
+  every answer.
+- A status box lists **the instruments already checked** on that date.
 
 ### Page 2a: First run of the day (daily check)
 This is a step-by-step form with a progress indicator.
@@ -37,8 +38,9 @@ This is a step-by-step form with a progress indicator.
 - Saved to `data/daily_checks.csv`.
 
 ### Page 2b: Experiments (Detection Capability, Linearity)
-Every experiment starts with the same form (`experiment_form.R`), in three sections,
-saved together with one "Save answer" button:
+Every experiment starts with the same steps (`experiment_form.R`), one at a time like the
+daily check, with a progress bar and Back / Next: **Instrument & product → Fluids →
+Samples (+ optional notes) → Save answer**, then a summary and "Add another product".
 - **Instrument:** only instruments **with a daily check on the chosen date** are listed.
   - If there are none, a notice explains what to do.
   - Saving is also refused on the server.
@@ -162,6 +164,10 @@ time a row is saved.
       "Start over";
     - error messages under their fields;
     - page titles name the page.
+13. Experiment steps like the daily check; "Back to home"; version corrections on an
+    instrument already checked (with an alert); version history one line per field;
+    length limits (versions 5, lots 12 characters); optional notes on controls, answers
+    and every change to the lists.
 
 ---
 

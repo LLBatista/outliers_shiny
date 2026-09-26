@@ -117,8 +117,8 @@ page_header <- function(heading_id, title, info_id, back_id) {
     shiny$div(
       class = "page-header-row",
       shiny$h2(id = heading_id, title),
-      shiny$actionButton(back_id, "Change details",
-        class = "btn-outline-secondary", icon = shiny$icon("pen-to-square")
+      shiny$actionButton(back_id, "Back to home",
+        class = "btn-outline-secondary", icon = shiny$icon("house")
       )
     ),
     shiny$uiOutput(info_id)
@@ -171,7 +171,7 @@ ui <- function(id) {
             heading_id = ns("daily_heading"),
             title = "First run of the day",
             info_id = ns("daily_info"), # chips: user, date
-            back_id = ns("change_details_daily")
+            back_id = ns("back_home_daily")
           ),
           daily_check$ui(ns("daily_check"))
         )
@@ -186,7 +186,7 @@ ui <- function(id) {
             heading_id = ns("experiment_heading"),
             title = shiny$textOutput(ns("experiment_title"), inline = TRUE), # e.g. "Linearity"
             info_id = ns("experiment_info"), # chips: user, date, type of run
-            back_id = ns("change_details_experiment")
+            back_id = ns("back_home_experiment")
           ),
           # One page per experiment. The tab names must match data/assays.csv exactly.
           shiny$tabsetPanel(
@@ -251,16 +251,17 @@ server <- function(id) {
 
     # Logs one change with the user's name (from the landing page) and the time.
     # Rows logged by one action share a change_id, so they can be undone together.
+    # `note`: the user's optional note about the change.
     record_change <- function(what, item, field, old_value, new_value,
-                              change_id = new_change_id()) {
+                              change_id = new_change_id(), note = "") {
       log_change(changes_file, experiment()$name, what, item, field, old_value, new_value,
-        change_id = change_id
+        change_id = change_id, note = note
       )
       change_saved(change_saved() + 1)
     }
 
     # New software/firmware versions for an instrument: one log line per changed field.
-    change_versions <- function(instrument, software, firmware) {
+    change_versions <- function(instrument, software, firmware, note = "") {
       current <- shiny$isolate(instruments())
       current <- current[current$instrument == instrument, ]
       new_values <- c(software_version = software, firmware_version = firmware)
@@ -268,7 +269,7 @@ server <- function(id) {
       for (field in names(new_values)) {
         if (!identical(current[[field]][1], new_values[[field]])) {
           record_change("instrument", instrument, field, current[[field]][1], new_values[[field]],
-            change_id = change_id
+            change_id = change_id, note = note
           )
         }
       }
@@ -285,8 +286,13 @@ server <- function(id) {
       }
     }
 
-    add_control_lot <- function(control, lot) record_change("control", control, "lot", "", lot)
-    add_product_lot <- function(product, lot) record_change("product", product, "lot", "", lot)
+    # (`expiry` is only used for fluids; see lot_changes.R.)
+    add_control_lot <- function(control, lot, expiry = NULL, note = "") {
+      record_change("control", control, "lot", "", lot, note = note)
+    }
+    add_product_lot <- function(product, lot, expiry = NULL, note = "") {
+      record_change("product", product, "lot", "", lot, note = note)
+    }
     remove_control_lot <- function(control, lot) {
       record_change("control", control, "lot_removed", lot, "")
     }
@@ -294,18 +300,18 @@ server <- function(id) {
       record_change("product", product, "lot_removed", lot, "")
     }
     # A new fluid lot is logged with its expiry date (two rows, one change_id).
-    add_fluid_lot <- function(fluid, lot, expiry_date) {
+    add_fluid_lot <- function(fluid, lot, expiry, note = "") {
       change_id <- new_change_id()
-      record_change("fluid", fluid, "lot", "", lot, change_id = change_id)
+      record_change("fluid", fluid, "lot", "", lot, change_id = change_id, note = note)
       record_change("fluid", fluid_lot_item(fluid, lot), "expiry_date", "",
-        format(as.Date(expiry_date), "%Y-%m-%d"),
-        change_id = change_id
+        format(as.Date(expiry), "%Y-%m-%d"),
+        change_id = change_id, note = note
       )
     }
     remove_fluid_lot <- function(fluid, lot) record_change("fluid", fluid, "lot_removed", lot, "")
     # The expiry date on the bottle differs from the list: the list is corrected.
-    correct_expiry <- function(fluid, lot, old, new) {
-      record_change("fluid", fluid_lot_item(fluid, lot), "expiry_date", old, new)
+    correct_expiry <- function(fluid, lot, old, new, note = "") {
+      record_change("fluid", fluid_lot_item(fluid, lot), "expiry_date", old, new, note = note)
     }
     undo_expiry <- function(correction) {
       record_change("fluid", correction$item, "expiry_date",
@@ -336,7 +342,7 @@ server <- function(id) {
     # `experiment()` holds what the user chose on the landing page:
     # name, experiment_date, first_run (TRUE/FALSE) and experiment_type.
     # Sets "Is this the first run of the day?" when going back to the landing page:
-    # cleared after "Change details", "No" after "Continue to an experiment".
+    # cleared after "Back to home", "No" after "Continue to an experiment".
     first_run_answer <- shiny$reactiveVal(list(answer = NULL, n = 0))
     set_first_run <- function(answer) {
       first_run_answer(list(answer = answer, n = first_run_answer()$n + 1))
@@ -345,7 +351,6 @@ server <- function(id) {
     experiment <- landing$server("landing",
       people = people,
       experiment_type = experiment_types,
-      instruments = base_instruments$instrument,
       checked_on = checked_on,
       first_run_answer = first_run_answer
     )
@@ -363,10 +368,10 @@ server <- function(id) {
       }
     })
 
-    # "Change details" (on both second pages) goes back to the landing page, where
+    # "Back to home" (on both second pages) goes back to the landing page, where
     # the user can change their name, the date or the experiment. The first-run
     # question is asked again, so an old answer is not reused by mistake.
-    shiny$observeEvent(list(input$change_details_daily, input$change_details_experiment),
+    shiny$observeEvent(list(input$back_home_daily, input$back_home_experiment),
       {
         set_first_run(NULL)
         shiny$updateTabsetPanel(session, "pages", selected = "landing")
@@ -442,10 +447,18 @@ server <- function(id) {
     }
 
     # The step-by-step form. It uses the two functions above to check and save.
+    # Instruments with a daily check on the chosen date: the only ones that can be
+    # used for an experiment (and the ones that can't get a second check).
+    checked_instruments <- shiny$reactive({
+      shiny$req(experiment())
+      checked_on(experiment()$experiment_date)
+    })
+
     daily_check$server("daily_check",
       instruments = instruments,
       controls = controls,
       is_already_checked = is_already_checked,
+      checked_today = checked_instruments,
       save_check = save_daily_check,
       start = experiment,
       changes = changes,
@@ -477,13 +490,6 @@ server <- function(id) {
       # The confirmation is shown in the form itself (see experiment_form.R).
     }
 
-    # Instruments with a daily check on the chosen date: the only ones that can
-    # be used for an experiment.
-    checked_instruments <- shiny$reactive({
-      shiny$req(experiment())
-      checked_on(experiment()$experiment_date)
-    })
-
     # One module per experiment; each returns its answer after "Save answer".
     # What every experiment page gets (see app/view/experiment_form.R).
     experiment_date <- shiny$reactive(experiment()$experiment_date)
@@ -498,7 +504,8 @@ server <- function(id) {
       add_fluid_lot = add_fluid_lot,
       remove_fluid_lot = remove_fluid_lot,
       correct_expiry = correct_expiry,
-      undo_expiry = undo_expiry
+      undo_expiry = undo_expiry,
+      start = experiment
     )
     detection_submission <- do.call(
       detection_capability$server, c(list("detection_capability"), form_inputs)

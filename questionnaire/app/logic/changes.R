@@ -13,7 +13,7 @@ box::use(
 # The columns of data/change_log.csv, in order. Rows logged by one action (e.g. new
 # software AND firmware versions) share a change_id, so they can be undone together.
 change_columns <- c(
-  "changed_at", "user", "what", "item", "field", "old_value", "new_value", "change_id"
+  "changed_at", "user", "what", "item", "field", "old_value", "new_value", "change_id", "note"
 )
 
 version_fields <- c("software_version", "firmware_version")
@@ -36,9 +36,10 @@ read_changes <- function(path) {
 
 #' Log one change, e.g. what = "instrument", item = "Analyzer 01",
 #' field = "firmware_version", old_value = "v01", new_value = "v02".
+#' `note`: optional text from the user (why the change was made).
 #' @export
 log_change <- function(path, user, what, item, field, old_value, new_value,
-                       change_id = new_change_id()) {
+                       change_id = new_change_id(), note = "") {
   row <- data.frame(
     changed_at = now_text(),
     user = user,
@@ -48,6 +49,7 @@ log_change <- function(path, user, what, item, field, old_value, new_value,
     old_value = old_value,
     new_value = new_value,
     change_id = change_id,
+    note = note,
     stringsAsFactors = FALSE
   )
   append_row(row, path)

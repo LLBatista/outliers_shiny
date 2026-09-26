@@ -38,13 +38,13 @@ lots_for_control <- function(controls, control) {
 # The columns of data/daily_checks.csv, in order.
 daily_check_columns <- c(
   "date", "user", "instrument", "software_version", "firmware_version",
-  "positive_lot", "positive_valid", "positive_rerun_valid",
-  "negative_lot", "negative_valid", "negative_rerun_valid", "saved_at"
+  "positive_lot", "positive_valid", "positive_rerun_valid", "positive_notes",
+  "negative_lot", "negative_valid", "negative_rerun_valid", "negative_notes", "saved_at"
 )
 
 #' Build a one-row data frame with one daily check.
 #'
-#' `positive` and `negative` are lists with `lot`, `valid` and `rerun_valid`.
+#' `positive` and `negative` are lists with `lot`, `valid`, `rerun_valid` and `notes`.
 #' @export
 new_daily_checks <- function(date, user, instrument, software_version, firmware_version,
                              positive, negative) {
@@ -57,9 +57,11 @@ new_daily_checks <- function(date, user, instrument, software_version, firmware_
     positive_lot = positive$lot,
     positive_valid = positive$valid,
     positive_rerun_valid = positive$rerun_valid,
+    positive_notes = paste0(positive$notes, ""),
     negative_lot = negative$lot,
     negative_valid = negative$valid,
     negative_rerun_valid = negative$rerun_valid,
+    negative_notes = paste0(negative$notes, ""),
     saved_at = now_text(),
     stringsAsFactors = FALSE
   )

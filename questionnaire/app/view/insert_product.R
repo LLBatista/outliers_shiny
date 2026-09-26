@@ -13,9 +13,9 @@ box::use(
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$div(
-    class = "app-card",
-    shiny$h3(shiny$icon("box-open"), "Instrument, product and lot"),
+  # A step of the experiment form (experiment_form.R); the title is where focus goes.
+  shiny$tagList(
+    shiny$h3(id = ns("title"), class = "step-title", "Which instrument, product and lot?"),
     # Only instruments with a daily check on the chosen date can be used.
     shiny$selectInput(ns("instrument"), "Instrument",
       choices = NULL, selectize = FALSE, width = "100%"
@@ -66,7 +66,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
           class = "notice",
           shiny$icon("circle-info"),
           "No instrument has had its daily check on this date yet. Do the first run of",
-          "the day on the instrument first (Change details, then answer \"Yes\")."
+          "the day on the instrument first (Back to home, then answer \"Yes\")."
         )
       }
     })

@@ -1,55 +1,117 @@
-# Shiny module: the form every experiment starts with (Detection Capability, Linearity,
-# and experiments to come). Sections:
-#   1. instrument, product and lot    (insert_product.R)
-#   2. instrument fluids              (fluid_lots.R)
-#   3. sample preparation             (sample_preparation.R)
-# "Save answer" checks all sections and returns everything as one answer.
+# Shiny module: the steps every experiment starts with (Detection Capability,
+# Linearity, and experiments to come), one at a time like the daily check:
+#   1. instrument, product and lot    (insert_product.R)     -> Next
+#   2. instrument fluids              (fluid_lots.R)         -> Next
+#   3. sample preparation + notes     (sample_preparation.R) -> Save answer
+#   done: a summary, and "Add another product" (instrument, fluids and sample
+#   preparation stay filled in, and are shown again before the next save)
 box::use(
   shiny,
 )
 
 box::use(
   app/view/fluid_lots,
+  app/view/inputs,
   app/view/insert_product,
   app/view/sample_preparation,
+  app/view/steps,
 )
+
+step_labels <- c(product = "Instrument & product", fluids = "Fluids", samples = "Samples")
+
+step_buttons <- function(ns, back = NULL, next_id, next_label, next_icon = "arrow-right") {
+  shiny$div(
+    class = "step-buttons",
+    if (!is.null(back)) shiny$actionButton(ns(back), "Back", icon = shiny$icon("arrow-left")),
+    shiny$actionButton(ns(next_id), next_label, class = "btn-primary", icon = shiny$icon(next_icon))
+  )
+}
 
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$tagList(
-    insert_product$ui(ns("product")),
-    fluid_lots$ui(ns("fluids")),
-    sample_preparation$ui(ns("samples")),
-    shiny$div(
-      class = "save-row",
-      shiny$actionButton(ns("save"), "Save answer",
-        class = "btn-primary", icon = shiny$icon("check")
+  shiny$div(
+    class = "app-card experiment-steps",
+    shiny$uiOutput(ns("progress")),
+    # One hidden tab per step; the server decides which one is shown.
+    shiny$tabsetPanel(
+      id = ns("steps"),
+      type = "hidden",
+      shiny$tabPanel(
+        "product",
+        insert_product$ui(ns("product")),
+        step_buttons(ns, next_id = "next_product", next_label = "Next")
       ),
-      # What happens after saving, so nothing is carried over by surprise.
-      shiny$p(
-        class = "save-hint",
-        "After saving, product and lot are emptied. Instrument, fluids and sample",
-        "preparation stay filled in for your next answer: change them if they are different."
+      shiny$tabPanel(
+        "fluids",
+        fluid_lots$ui(ns("fluids")),
+        step_buttons(ns, back = "back_fluids", next_id = "next_fluids", next_label = "Next")
       ),
-      # Confirmation after saving; screen readers read it out (it is a live region).
-      shiny$div(class = "form-success", shiny$textOutput(ns("saved")))
+      shiny$tabPanel(
+        "samples",
+        sample_preparation$ui(ns("samples")),
+        inputs$notes(ns("notes"), "Notes about this answer (optional)"),
+        step_buttons(ns,
+          back = "back_samples", next_id = "save", next_label = "Save answer",
+          next_icon = "check"
+        )
+      ),
+      shiny$tabPanel(
+        "done",
+        # role = "status": screen readers read the summary out when it appears.
+        shiny$div(role = "status", shiny$uiOutput(ns("summary"))),
+        shiny$p(
+          class = "save-hint",
+          "For the next product, the instrument, fluids and sample preparation stay filled",
+          "in. You will see them again before saving: change them if they are different."
+        ),
+        step_buttons(ns,
+          next_id = "another", next_label = "Add another product", next_icon = "plus"
+        )
+      )
     )
   )
 }
 
-# "Answer saved: ORG200, lot A1, on Analyzer 01. Expiry date of lot SF2601 corrected to
-# 28 Feb 2027 in the list."
-saved_text <- function(answer, corrections) {
-  corrected <- vapply(corrections, function(c) {
-    paste0(
-      " Expiry date of lot ", c$lot, " corrected to ",
-      format(as.Date(c$new), "%d %b %Y"), " in the list."
-    )
-  }, character(1))
-  paste0(
-    "Answer saved: ", answer$product, ", lot ", answer$lot, ", on ", answer$instrument, ".",
-    paste(corrected, collapse = "")
+# The summary after saving: what was saved, and any expiry date corrected in the list.
+summary_ui <- function(answer, corrections, title_id) {
+  lots <- function(prefix) {
+    lot <- function(suffix) {
+      value <- answer[[paste0(prefix, "_lot", suffix)]]
+      if (length(value) == 0 || value == "") {
+        return(NULL)
+      }
+      expiry <- format(as.Date(answer[[paste0(prefix, "_expiry", suffix)]]), "%d %b %Y")
+      paste0(value, " (expires ", expiry, ")")
+    }
+    paste(c(lot(""), lot("_2")), collapse = " and ")
+  }
+  thawed <- answer$samples_thawed == "yes"
+  samples <- paste0(
+    if (answer$samples_vortexed == "yes") "vortexed" else "not vortexed", ", ",
+    if (thawed) paste("thawed", answer$thaw_minutes, "min") else "not thawed"
+  )
+  rows <- list(
+    "Instrument" = answer$instrument,
+    "Product" = paste0(answer$product, ", lot ", answer$lot),
+    "System fluid" = lots("system_fluid"),
+    "System buffer" = lots("system_buffer"),
+    "Samples" = samples,
+    "Notes" = if (answer$notes != "") answer$notes
+  )
+  rows <- Filter(Negate(is.null), rows)
+  shiny$div(
+    class = "done-summary",
+    shiny$h3(id = title_id, class = "step-title", shiny$icon("circle-check"), "Answer saved"),
+    shiny$tags$dl(lapply(names(rows), function(name) {
+      shiny$tagList(shiny$tags$dt(name), shiny$tags$dd(rows[[name]]))
+    })),
+    lapply(corrections, function(c) {
+      shiny$p(class = "change-note", shiny$icon("clock-rotate-left"), paste0(
+        "Expiry date of lot ", c$lot, " corrected to ", format(as.Date(c$new), "%d %b %Y"),
+        " in the list."
+      ))
+    })
   )
 }
 
@@ -57,14 +119,15 @@ saved_text <- function(answer, corrections) {
 #' - `product_id()`, `checked_instruments()`, `add_product_lot`, `remove_product_lot`:
 #'   see insert_product.R
 #' - `fluids()`, `add_fluid_lot`, `remove_fluid_lot`, `undo_expiry`: see fluid_slot.R
-#' - `correct_expiry(fluid, lot, old, new)`: corrects a lot's expiry date in the list
+#' - `correct_expiry(fluid, lot, old, new, note)`: corrects a lot's expiry date in the list
 #' - `experiment_date()`: the date chosen on the landing page
 #' - `changes()`: the change log
+#' - `start()`: changes when the user starts from the landing page (back to step 1)
 #' Returns a reactive with the latest saved answer (a named list, see responses.R).
 #' @export
 server <- function(id, product_id, checked_instruments, changes, add_product_lot,
                    remove_product_lot, fluids, experiment_date, add_fluid_lot,
-                   remove_fluid_lot, correct_expiry, undo_expiry) {
+                   remove_fluid_lot, correct_expiry, undo_expiry, start) {
   shiny$moduleServer(id, function(input, output, session) {
     product <- insert_product$server("product",
       product_id = product_id,
@@ -83,26 +146,65 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     )
     samples <- sample_preparation$server("samples")
 
-    # Checks every section, top to bottom; focus goes to the first problem only.
-    # Expiry dates corrected from the bottle go into the list only when the whole
-    # answer is complete and saved.
+    # --- Moving between steps ---------------------------------------------------------
+    current_step <- shiny$reactiveVal("product")
+    step_headings <- c(
+      product = "product-title", fluids = "fluids-title", samples = "samples-title",
+      done = "done_title"
+    )
+    go_to <- function(step, focus = TRUE) {
+      current_step(step)
+      shiny$updateTabsetPanel(session, "steps", selected = step)
+      if (focus) session$sendCustomMessage("focus-element", session$ns(step_headings[[step]]))
+    }
+    output$progress <- shiny$renderUI(steps$progress(step_labels, current_step()))
+
+    # Coming from the landing page, focus goes to the page title instead (main.R).
+    shiny$observeEvent(start(), go_to("product", focus = FALSE))
+
+    shiny$observeEvent(input$next_product, {
+      if (!is.null(product$collect(focus = TRUE))) go_to("fluids")
+    })
+    shiny$observeEvent(input$next_fluids, {
+      if (!is.null(fluid_section$collect(focus = TRUE))) go_to("samples")
+    })
+    shiny$observeEvent(input$back_fluids, go_to("product"))
+    shiny$observeEvent(input$back_samples, go_to("fluids"))
+
+    # --- Saving ------------------------------------------------------------------------
+    # The earlier steps are checked again (a list may have changed meanwhile): if one
+    # is no longer complete, the user is taken back to it.
     submission <- shiny$eventReactive(input$save, {
-      answer <- product$collect(focus = TRUE)
-      fluid <- fluid_section$collect(focus = !is.null(answer))
-      preparation <- samples$collect(focus = !is.null(answer) && !is.null(fluid))
-      shiny$req(answer, fluid, preparation)
-      for (c in fluid$corrections) correct_expiry(c$fluid, c$lot, c$old, c$new)
-      list(answer = c(answer, fluid$answer, preparation), corrections = fluid$corrections)
+      preparation <- samples$collect(focus = TRUE)
+      shiny$req(preparation)
+      answer <- product$collect(focus = FALSE)
+      if (is.null(answer)) {
+        go_to("product", focus = FALSE)
+        product$collect(focus = TRUE)
+        shiny$req(FALSE)
+      }
+      fluid <- fluid_section$collect(focus = FALSE)
+      if (is.null(fluid)) {
+        go_to("fluids", focus = FALSE)
+        fluid_section$collect(focus = TRUE)
+        shiny$req(FALSE)
+      }
+      for (c in fluid$corrections) correct_expiry(c$fluid, c$lot, c$old, c$new, c$note)
+      answer <- c(answer, fluid$answer, preparation, list(notes = inputs$clean_notes(input$notes)))
+      list(answer = answer, corrections = fluid$corrections)
     })
 
-    # After a save: confirm it and empty product and lot (see the hint in the UI).
-    saved_message <- shiny$reactiveVal("")
-    shiny$observeEvent(product$product(), if (product$product() != "") saved_message(""))
-    output$saved <- shiny$renderText(saved_message())
+    output$summary <- shiny$renderUI({
+      saved <- submission()
+      summary_ui(saved$answer, saved$corrections, session$ns("done_title"))
+    })
+    shiny$observeEvent(submission(), go_to("done"))
 
-    shiny$observeEvent(submission(), {
-      saved_message(saved_text(submission()$answer, submission()$corrections))
+    # The next product: product, lot and notes are emptied; the rest stays.
+    shiny$observeEvent(input$another, {
       product$clear()
+      shiny$updateTextAreaInput(session, "notes", value = "")
+      go_to("product")
     })
 
     shiny$reactive(submission()$answer)

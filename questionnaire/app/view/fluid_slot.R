@@ -16,6 +16,7 @@ box::use(
   app/logic/fluids[expiry_of, last_expiry_correction, lots_for_fluid],
   app/view/date_field,
   app/view/field_errors,
+  app/view/inputs,
   app/view/lot_changes,
 )
 
@@ -75,7 +76,8 @@ ui <- function(id, label) {
             class = "change-hint",
             "When you save, this date is used for this answer and corrects the fluids list",
             "for everyone. It is logged with your name."
-          )
+          ),
+          inputs$notes(ns("correction_note"), "Note about this correction (optional)")
         )
       )
     ),
@@ -114,7 +116,8 @@ expiry_box <- function(expiry, experiment_date, correction, undo_id) {
           shiny$icon("clock-rotate-left"),
           paste0(
             "Corrected by ", changed_by_text(correction), " (was ",
-            nice_date(correction$old_value), ")."
+            nice_date(correction$old_value), ").",
+            if (correction$note != "") paste0(" Note: ", correction$note)
           )
         ),
         shiny$actionButton(undo_id, "Undo this correction", class = "btn-link")
@@ -179,7 +182,7 @@ slot_errors <- function(input, system_expiry, other_lot, experiment_date) {
 #'
 #' Returns a list:
 #' - `collect(focus)`: list(lot, expiry, correction), or NULL after showing what is
-#'   missing. `correction` is NULL, or list(fluid, lot, old, new) when the bottle date
+#'   missing. `correction` is NULL, or list(fluid, lot, old, new, note) when the bottle date
 #'   differs (it is applied only when the whole answer is saved).
 #' - `reset()`: empties the slot
 #' - `lot()`: the chosen lot
@@ -216,6 +219,7 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
     # asks again.
     clear_comparison <- function() {
       shiny$updateRadioButtons(session, "matches", selected = character(0))
+      shiny$updateTextAreaInput(session, "correction_note", value = "")
       date_field$clear(session, "bottle_expiry")
     }
     shiny$observeEvent(input$lot, clear_comparison(), ignoreInit = TRUE)
@@ -297,7 +301,10 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
         bottle <- format(input$bottle_expiry)
         return(list(
           lot = input$lot, expiry = bottle,
-          correction = list(fluid = fluid(), lot = input$lot, old = system_expiry(), new = bottle)
+          correction = list(
+            fluid = fluid(), lot = input$lot, old = system_expiry(), new = bottle,
+            note = inputs$clean_notes(input$correction_note)
+          )
         ))
       }
       list(lot = input$lot, expiry = system_expiry(), correction = NULL)

@@ -8,7 +8,9 @@ box::use(
   app/logic/records[append_row],
 )
 
-control <- function(lot, valid = "yes") list(lot = lot, valid = valid, rerun_valid = "not needed")
+control <- function(lot, valid = "yes", notes = "") {
+  list(lot = lot, valid = valid, rerun_valid = "not needed", notes = notes)
+}
 
 test_that("instrument versions and control lots are looked up", {
   instruments <- data.frame(instrument = c("A1", "A2"), software_version = c("s1", "s2"),
@@ -25,9 +27,11 @@ test_that("a daily check is saved, and counts once per instrument per day", {
   expect_equal(nrow(load_daily_checks(path)), 0)
 
   append_row(new_daily_checks("2026-09-01", "Ana", "A1", "s1", "f1",
-                              control("P1"), control("N1")), path)
+                              control("P1", notes = "faint band"), control("N1")), path)
   checks <- load_daily_checks(path)
   expect_equal(checks$positive_lot, "P1")
+  expect_equal(checks$positive_notes, "faint band")
+  expect_equal(checks$negative_notes, "")
   expect_true(checks$saved_at != "")
 
   expect_true(already_checked(checks, as.Date("2026-09-01"), "A1"))

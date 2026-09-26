@@ -5,7 +5,8 @@
 # - If they were changed in the app: who changed them last and when, with
 #   "Undo this change" (asks for confirmation first).
 # - "Versions not right? Correct them here": the corrected versions are saved when the
-#   user presses Confirm in daily_check.R (see `new_versions()` below).
+#   user presses the button under it in daily_check.R (see `new_versions()` below),
+#   with an optional note.
 box::use(
   shiny,
 )
@@ -14,18 +15,34 @@ box::use(
   app/logic/changes[changed_by_text, last_version_change],
   app/logic/daily_checks[instrument_versions],
   app/view/field_errors,
+  app/view/inputs,
 )
 
 # How the version fields are called in messages.
 version_names <- c(software_version = "software", firmware_version = "firmware")
 
-# The note under the versions: who changed what, e.g. "... firmware v01 to v05".
-describe_last_change <- function(change) {
-  what <- paste0(version_names[change$field], " ", change$old_value, " \u2192 ",
-    change$new_value,
-    collapse = ", "
+# How the version fields are called in the history (one line per field).
+version_labels <- c(software_version = "Software", firmware_version = "Firmware")
+
+# The history under the versions: who changed them and when, then one line per
+# changed field ("Software: v01 -> v02"), the note if there is one, and Undo.
+history_ui <- function(change, undo_id) {
+  note <- change$note[change$note != ""]
+  shiny$div(
+    class = "change-note change-history",
+    shiny$span(
+      shiny$icon("clock-rotate-left"),
+      paste0("Last changed by ", changed_by_text(change), ":")
+    ),
+    shiny$tags$ul(lapply(seq_len(nrow(change)), function(i) {
+      shiny$tags$li(paste0(
+        version_labels[[change$field[i]]], ": ", change$old_value[i], " \u2192 ",
+        change$new_value[i]
+      ))
+    })),
+    if (length(note) > 0) shiny$p(class = "change-note-text", paste("Note:", note[1])),
+    shiny$actionButton(undo_id, "Undo this change", class = "btn-link")
   )
-  paste0("Last changed by ", changed_by_text(change), ": ", what, ".")
 }
 
 # TRUE when typed versions differ from the ones on record (both fields empty counts
@@ -78,13 +95,14 @@ ui <- function(id) {
         shiny$tags$summary("Versions not right? Correct them here"),
         shiny$p(
           class = "change-hint",
-          "The corrected versions are saved when you press Confirm. They apply for",
+          "The corrected versions are saved with the button below. They apply for",
           "everyone and are logged with your name."
         ),
-        shiny$textInput(ns("software"), "Software version", width = "100%"),
+        inputs$limited_text(ns("software"), "Software version", inputs$max_length$version),
         field_errors$message_ui(ns("software")),
-        shiny$textInput(ns("firmware"), "Firmware version", width = "100%"),
-        field_errors$message_ui(ns("firmware"))
+        inputs$limited_text(ns("firmware"), "Firmware version", inputs$max_length$version),
+        field_errors$message_ui(ns("firmware")),
+        inputs$notes(ns("note"), "Why were they corrected? (optional)")
       )
     )
   )
@@ -98,11 +116,13 @@ ui <- function(id) {
 #' Returns a list:
 #' - `versions()`: the versions on record for the chosen instrument
 #' - `edited()`: TRUE when the user typed versions that differ from the ones on record
-#' - `new_versions()`: the typed versions, or NULL after showing what is missing
+#' - `new_versions()`: list(software, firmware, note), or NULL after showing what is wrong
 #' - `reset()`: clears messages and questions (when starting a new check)
 #' @export
 server <- function(id, instrument, instruments, changes, undo_versions) {
   shiny$moduleServer(id, function(input, output, session) {
+    # A new instrument starts without a note.
+    shiny$observeEvent(instrument(), shiny$updateTextAreaInput(session, "note", value = ""))
     output$has_instrument <- shiny$reactive(shiny$isTruthy(instrument()))
     shiny$outputOptions(output, "has_instrument", suspendWhenHidden = FALSE)
     field_errors$clear_on_change(input, session, c("software", "firmware"))
@@ -144,11 +164,20 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
 
     new_versions <- function() {
       t <- typed()
+      max <- inputs$max_length$version
       ok <- field_errors$show(session, list(
-        software = if (t$software == "") "Please fill in the software version.",
-        firmware = if (t$firmware == "") "Please fill in the firmware version."
+        software = if (t$software == "") {
+          "Please fill in the software version."
+        } else {
+          inputs$too_long(t$software, max)
+        },
+        firmware = if (t$firmware == "") {
+          "Please fill in the firmware version."
+        } else {
+          inputs$too_long(t$firmware, max)
+        }
       ))
-      if (ok) t else NULL
+      if (ok) c(t, list(note = inputs$clean_notes(input$note))) else NULL
     }
 
     # --- Who changed the versions last, and undoing that change --------------------
@@ -164,11 +193,7 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
       if (is.null(change)) {
         return(NULL)
       }
-      shiny$div(
-        class = "change-note",
-        shiny$span(shiny$icon("clock-rotate-left"), describe_last_change(change)),
-        shiny$actionButton(session$ns("undo"), "Undo this change", class = "btn-link")
-      )
+      history_ui(change, session$ns("undo"))
     })
 
     pending_undo <- shiny$reactiveVal(FALSE)
@@ -201,6 +226,7 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
 
     reset <- function() {
       field_errors$show(session, list(software = "", firmware = ""), focus = FALSE)
+      shiny$updateTextAreaInput(session, "note", value = "")
       pending_undo(FALSE)
       undo_message("")
     }

@@ -12,9 +12,9 @@ yes_no <- c("Yes" = "yes", "No" = "no")
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  shiny$div(
-    class = "app-card",
-    shiny$h3(shiny$icon("vials"), "Sample preparation"),
+  # A step of the experiment form (experiment_form.R); the title is where focus goes.
+  shiny$tagList(
+    shiny$h3(id = ns("title"), class = "step-title", "How were the samples prepared?"),
     shiny$radioButtons(ns("vortexed"), "Were the samples vortexed?",
       choices = yes_no, selected = character(0), inline = TRUE
     ),

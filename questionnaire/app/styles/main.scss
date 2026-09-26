@@ -436,6 +436,12 @@ select.shiny-input-select {
     color: $primary;
   }
 
+  .daily-status-empty {
+    margin: 0;
+    font-size: $size-small;
+    color: $text-muted-on-tint;
+  }
+
   .todo {
     color: $text-muted-on-tint;
   }
@@ -727,4 +733,42 @@ input.field-invalid,
     color: $text-muted;
     font-variant-numeric: tabular-nums;
   }
+}
+
+// ---- An alert that needs attention but doesn't stop the user ----
+.notice.warning {
+  background: #fff4e5;
+  color: #7a4300; // 6.9:1 on the background
+
+  i {
+    color: #7a4300;
+  }
+
+  strong {
+    display: block;
+  }
+}
+
+// ---- Version history: one line per changed field ----
+.change-history {
+  display: block;
+
+  ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.75rem;
+  }
+
+  .change-note-text {
+    margin: 0.25rem 0 0 1.75rem;
+  }
+}
+
+// ---- Notes (optional) ----
+textarea.form-control {
+  min-height: $touch * 1.5;
+}
+
+// The steps of the experiment form: the hint after saving sits above the buttons
+.experiment-steps .save-hint {
+  margin-bottom: 0.5rem;
 }

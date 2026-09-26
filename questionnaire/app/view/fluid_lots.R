@@ -40,9 +40,9 @@ ui <- function(id) {
       shiny$actionButton(ns(paste0("add_", key)), fluid_names[[key]], icon = shiny$icon("plus"))
     )
   })
-  shiny$div(
-    class = "app-card",
-    shiny$h3(shiny$icon("droplet"), "Instrument fluids"),
+  # A step of the experiment form (experiment_form.R); the title is where focus goes.
+  shiny$tagList(
+    shiny$h3(id = ns("title"), class = "step-title", "Which instrument fluids did you use?"),
     lapply(keys, function(key) fluid_slot$ui(ns(key), fluid_names[[key]])),
     extras,
     # Hidden once both second lots are open.
