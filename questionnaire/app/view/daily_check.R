@@ -32,7 +32,7 @@ ui <- function(id) {
       # --- Step 1: instrument ------------------------------------------------
       shiny$tabPanel(
         "instrument",
-        shiny$h4(
+        shiny$h3(
           id = ns("instrument_title"), class = "step-title",
           "Which instrument are you checking?"
         ),
@@ -234,7 +234,7 @@ server <- function(id, instruments, controls, changes, is_already_checked, save_
       shiny$req(check)
       shiny$div(
         class = "done-summary",
-        shiny$h4(
+        shiny$h3(
           id = session$ns("done_title"), class = "step-title",
           shiny$icon("circle-check"), "Daily check saved"
         ),

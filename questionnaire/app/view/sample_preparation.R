@@ -28,11 +28,24 @@ ui <- function(id) {
       condition = "input.thawed == 'yes'",
       ns = ns,
       shiny$numericInput(ns("thaw_minutes"), "How long did they thaw? (minutes)",
-        value = NA, min = 0, step = 1, width = "100%"
+        value = NA, min = 1, max = 1440, step = 1, width = "100%"
       ),
       field_errors$message_ui(ns("thaw_minutes"))
     )
   )
+}
+
+# A thawing time must be filled in, above 0 and at most 24 hours (1440 minutes); a
+# larger number is almost always a typing mistake.
+thaw_minutes_error <- function(thawed, minutes) {
+  if (!thawed) {
+    return(NULL)
+  }
+  if (!is.numeric(minutes) || is.na(minutes)) {
+    "Please enter how many minutes the samples thawed."
+  } else if (minutes <= 0 || minutes > 1440) {
+    "Please check the time: it should be between 1 and 1440 minutes (24 hours)."
+  }
 }
 
 #' Returns a list:
@@ -49,9 +62,7 @@ server <- function(id) {
       ok <- field_errors$show(session, focus = focus, list(
         vortexed = if (!shiny$isTruthy(input$vortexed)) "Please say if the samples were vortexed.",
         thawed = if (!shiny$isTruthy(input$thawed)) "Please say if the samples were thawed.",
-        thaw_minutes = if (thawed && (!is.numeric(minutes) || is.na(minutes) || minutes < 0)) {
-          "Please enter how many minutes the samples thawed."
-        }
+        thaw_minutes = thaw_minutes_error(thawed, minutes)
       ))
       if (!ok) {
         return(NULL)

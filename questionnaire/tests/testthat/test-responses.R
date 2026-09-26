@@ -4,7 +4,7 @@ box::use(
 )
 box::use(
   app/logic/records[append_row],
-  app/logic/responses[load_responses, new_response],
+  app/logic/responses[answers_for_table, load_responses, new_response],
 )
 
 answer <- function(product, lot, ...) {
@@ -44,4 +44,15 @@ test_that("a file from an older version (fewer columns) is upgraded", {
   expect_equal(saved$product, c("P1", "P2"))
   expect_equal(saved$instrument, c("", "Analyzer 01"))
   expect_equal(saved$run_type, c("", "Pre-test"))
+})
+
+test_that("the answers table sums up fluids and sample preparation", {
+  row <- new_response("2026-09-01", "Ana", "Linearity", "Regular", answer("P1", "L1",
+    system_fluid_lot = "SF1", system_buffer_lot = "SB1", system_buffer_lot_2 = "SB2",
+    samples_vortexed = "yes", samples_thawed = "yes", thaw_minutes = 30
+  ))
+  shown <- answers_for_table(row)
+  expect_equal(shown$fluids, "Fluid SF1 \u00b7 buffer SB1 + SB2")
+  expect_equal(shown$samples, "vortexed, thawed 30 min")
+  expect_equal(nrow(answers_for_table(row[0, ])), 0)
 })

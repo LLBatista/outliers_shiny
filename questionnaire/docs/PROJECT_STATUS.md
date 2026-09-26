@@ -44,14 +44,22 @@ saved together with one "Save answer" button:
   - Saving is also refused on the server.
 - **Product and lot:** the lot list shows only the chosen product's lots.
   **"Lot not listed? Add it"** is available here too.
-- **Instrument fluids:** system buffer and system fluid, each with its lot.
-  - The expiry date from `data/fluids.csv` is shown, and the user ticks "The expiry
-    date matches the bottle". An expired lot is shown in red (a warning, not a block).
+- **Instrument fluids:** system fluid and system buffer, each with its lot.
+  - The expiry date from `data/fluids.csv` is shown, and the user answers "Does the
+    expiry date on the bottle match?" Yes / No.
+  - On "No", the user enters the date printed on the bottle. When the answer is saved,
+    that date is used and the fluids list is corrected for everyone (logged, shown as
+    "Corrected by …", and it can be undone).
+  - **An expired lot can't be used**: saving is blocked until another lot is chosen or
+    a later bottle date is entered.
   - A missing lot can be added with its expiry date (confirmed and logged).
-  - "Add a second system buffer / fluid" for the rare runs that use two lots.
+  - "Another lot used in this run? (rare)" adds a second system fluid or system buffer.
 - **Sample preparation:** vortexed? thawed? and if thawed, for how many minutes.
 - After saving, a confirmation appears and the product and lot are cleared. The
-  instrument, fluids and sample preparation are kept for the next answer.
+  instrument, fluids and sample preparation are kept for the next answer (a note next
+  to "Save answer" says so).
+- "Your answers for this date" lists each answer in short, newest first, including
+  fluids and sample preparation.
 - **"Your answers for this date"** shows the user's own answers.
 - Saved to `data/responses.csv`.
 

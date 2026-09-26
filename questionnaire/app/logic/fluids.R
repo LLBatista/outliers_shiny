@@ -11,7 +11,7 @@ box::use(
 #' The fluids asked for in every experiment: the name used for the columns of
 #' data/responses.csv -> the name in data/fluids.csv.
 #' @export
-fluid_names <- c(system_buffer = "System Buffer", system_fluid = "System Fluid")
+fluid_names <- c(system_fluid = "System fluid", system_buffer = "System buffer")
 
 #' Read the fluids, their lots and expiry dates (YYYY-MM-DD) from a CSV file.
 #' @export
@@ -37,7 +37,7 @@ expiry_of <- function(fluids, fluid, lot) {
 }
 
 #' How a fluid lot is named in the change log when its expiry date is logged,
-#' e.g. "System Buffer lot SB2603".
+#' e.g. "System buffer lot SB2603".
 #' @export
 fluid_lot_item <- function(fluid, lot) {
   paste(fluid, "lot", lot)
@@ -54,4 +54,16 @@ fluids_with_changes <- function(fluids, changes) {
     fluids$expiry_date[rows] <- expiry$new_value[i]
   }
   fluids
+}
+
+#' The latest correction of a lot's expiry date (a row of the change log), or NULL.
+#' Setting the date of a lot added in the app (old value "") is not a correction.
+#' @export
+last_expiry_correction <- function(changes, fluid, lot) {
+  is_expiry <- changes$what == "fluid" & changes$field == "expiry_date"
+  rows <- changes[is_expiry & changes$item == fluid_lot_item(fluid, lot), ]
+  if (nrow(rows) == 0 || rows$old_value[nrow(rows)] == "") {
+    return(NULL)
+  }
+  rows[nrow(rows), ]
 }

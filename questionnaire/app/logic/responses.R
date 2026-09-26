@@ -39,3 +39,41 @@ new_response <- function(experiment_date, user, experiment, run_type, answer) {
 load_responses <- function(path) {
   read_table(path, response_columns)
 }
+
+#' Saved answers as shown in "Your answers for this date": the fluid lots and the
+#' sample preparation are summed up in one column each.
+#' @export
+answers_for_table <- function(responses) {
+  columns <- c(
+    "experiment", "run_type", "instrument", "product", "lot", "fluids", "samples", "saved_at"
+  )
+  if (nrow(responses) == 0) {
+    return(read_table(tempfile(), columns))
+  }
+  lots <- function(prefix) {
+    paste0(responses[[paste0(prefix, "_lot")]], ifelse(
+      responses[[paste0(prefix, "_lot_2")]] == "", "",
+      paste0(" + ", responses[[paste0(prefix, "_lot_2")]])
+    ))
+  }
+  fluids <- paste0("Fluid ", lots("system_fluid"), " \u00b7 buffer ", lots("system_buffer"))
+  fluids[responses$system_fluid_lot == ""] <- ""
+  samples <- paste0(
+    ifelse(responses$samples_vortexed == "yes", "vortexed", "not vortexed"), ", ",
+    ifelse(responses$samples_thawed == "yes",
+      paste0("thawed ", responses$thaw_minutes, " min"), "not thawed"
+    )
+  )
+  samples[responses$samples_vortexed == ""] <- ""
+  data.frame(
+    experiment = responses$experiment,
+    run_type = responses$run_type,
+    instrument = responses$instrument,
+    product = responses$product,
+    lot = responses$lot,
+    fluids = fluids,
+    samples = samples,
+    saved_at = responses$saved_at,
+    stringsAsFactors = FALSE
+  )
+}

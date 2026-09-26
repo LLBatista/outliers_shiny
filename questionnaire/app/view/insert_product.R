@@ -72,10 +72,14 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     })
 
     # --- Product and lot -------------------------------------------------------------
+    # The product the user chose, kept here: the list is refilled after every logged
+    # change, and must not bring back a product that was just emptied after saving.
+    chosen_product <- shiny$reactiveVal("")
+    shiny$observeEvent(input$product, chosen_product(input$product))
     shiny$observeEvent(product_id(), {
       shiny$updateSelectInput(session, "product",
         choices = c("Choose a product..." = "", unique(product_id()$product)),
-        selected = shiny$isolate(input$product)
+        selected = shiny$isolate(chosen_product())
       )
     })
 
@@ -140,6 +144,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     # After a save: empty product and lot so the same answer isn't saved twice (the
     # instrument stays: the next answer is usually on the same one).
     clear <- function() {
+      chosen_product("")
       chosen_lot("")
       shiny$updateSelectInput(session, "product", selected = "")
       shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = ""), selected = "")

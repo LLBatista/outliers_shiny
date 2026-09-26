@@ -17,7 +17,7 @@ yes_no <- c("Yes" = "yes", "No" = "no")
 ui <- function(id, title, next_label) {
   ns <- shiny$NS(id)
   shiny$tagList(
-    shiny$h4(id = ns("title"), class = "step-title", title),
+    shiny$h3(id = ns("title"), class = "step-title", title),
     shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
     field_errors$message_ui(ns("lot")),
     lot_changes$ui(ns("lot_changes")),

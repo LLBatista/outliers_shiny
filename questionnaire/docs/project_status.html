@@ -292,7 +292,7 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
             <ul>
               <li>The instrument list only shows instruments with a daily check on that date. A notice explains what to do when there are none.</li>
               <li>Product, then its lot. Missing lots can be added.</li>
-              <li>Instrument fluids: system buffer and system fluid lots, with the expiry date to confirm against the bottle; new lots with expiry date; a rare second lot.</li>
+              <li>Instrument fluids: system fluid and system buffer lots. The user answers whether the expiry date on the bottle matches; if not, the bottle date is saved and corrects the list (logged, undoable). Expired lots can't be used. New lots with expiry date; a rare second lot.</li>
               <li>Sample preparation: vortexed, thawed, and for how many minutes.</li>
               <li>After a save, the app confirms it and clears product and lot. The instrument stays selected.</li>
               <li>"Your answers for this date" lists the user's own answers.</li>

@@ -31,12 +31,12 @@ box::use(
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/records[append_row],
-  app/logic/responses[load_responses, new_response],
+  app/logic/responses[answers_for_table, load_responses, new_response],
+  app/view/answers_list,
   app/view/daily_check,
   app/view/detection_capability,
   app/view/landing,
   app/view/linearity,
-  app/view/responses_table,
 )
 
 # ============================================================================
@@ -55,6 +55,27 @@ focus_script <- shiny$tags$script(shiny$HTML("
       el.focus();
     }, 60);
   });
+"))
+
+# The "native-date" input binding for app/view/date_field.R: a plain <input type="date">
+# whose value is "YYYY-MM-DD" (or "" when empty).
+native_date_script <- shiny$tags$script(shiny$HTML("
+  (function() {
+    var binding = new Shiny.InputBinding();
+    $.extend(binding, {
+      find: function(scope) { return $(scope).find('input.native-date'); },
+      getValue: function(el) { return el.value; },
+      setValue: function(el, value) { el.value = value; },
+      subscribe: function(el, callback) {
+        $(el).on('change.nativeDate', function() { callback(false); });
+      },
+      unsubscribe: function(el) { $(el).off('.nativeDate'); },
+      receiveMessage: function(el, data) {
+        if (data.hasOwnProperty('value')) { el.value = data.value; $(el).trigger('change'); }
+      }
+    });
+    Shiny.inputBindings.register(binding, 'lab.nativeDate');
+  })();
 "))
 
 # Shows error messages under their fields (see app/view/field_errors.R): fills the
@@ -127,6 +148,7 @@ ui <- function(id) {
 
     focus_script,
     field_errors_script,
+    native_date_script,
 
     # The pages of the app. `type = "hidden"` hides the tab buttons:
     # the server decides which page is shown (see "Routing" below).
@@ -179,7 +201,7 @@ ui <- function(id) {
               linearity$ui(ns("linearity"))
             )
           ),
-          responses_table$ui(ns("responses"), title = "Your answers for this date")
+          answers_list$ui(ns("responses"), title = "Your answers for this date")
         )
       )
     )
@@ -281,6 +303,15 @@ server <- function(id) {
       )
     }
     remove_fluid_lot <- function(fluid, lot) record_change("fluid", fluid, "lot_removed", lot, "")
+    # The expiry date on the bottle differs from the list: the list is corrected.
+    correct_expiry <- function(fluid, lot, old, new) {
+      record_change("fluid", fluid_lot_item(fluid, lot), "expiry_date", old, new)
+    }
+    undo_expiry <- function(correction) {
+      record_change("fluid", correction$item, "expiry_date",
+        correction$new_value, correction$old_value
+      )
+    }
 
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
@@ -465,7 +496,9 @@ server <- function(id) {
       fluids = fluids,
       experiment_date = experiment_date,
       add_fluid_lot = add_fluid_lot,
-      remove_fluid_lot = remove_fluid_lot
+      remove_fluid_lot = remove_fluid_lot,
+      correct_expiry = correct_expiry,
+      undo_expiry = undo_expiry
     )
     detection_submission <- do.call(
       detection_capability$server, c(list("detection_capability"), form_inputs)
@@ -477,14 +510,15 @@ server <- function(id) {
 
     # The table shows only this user's answers for the chosen date (without the
     # date and user columns, which the chips above already show).
+    # (Fluids and sample preparation are summed up in one column each.)
     my_answers <- shiny$reactive({
       info <- experiment()
       all <- responses()
       mine <- all$date == format(as.Date(info$experiment_date), "%Y-%m-%d") & all$user == info$name
-      all[mine, c("experiment", "run_type", "instrument", "product", "lot"), drop = FALSE]
+      answers_for_table(all[mine, , drop = FALSE])
     })
-    responses_table$server("responses",
-      responses = my_answers,
+    answers_list$server("responses",
+      answers = my_answers,
       empty_text = "No answers saved for this date yet. They will appear here after you save one."
     )
   })

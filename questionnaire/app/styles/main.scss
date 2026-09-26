@@ -17,7 +17,7 @@ $radius-card: 14px;
 // Five text sizes, used everywhere
 $size-small: 0.875rem; // chips, step names, hints
 $size-body: 1rem; // text, labels, step titles
-$size-title: 1.2rem; // card titles
+$size-title: 1.25rem; // card titles (1.25 x body)
 $size-page: 1.6rem; // page titles
 $size-display: 2rem; // "Welcome!"
 
@@ -30,7 +30,8 @@ $size-display: 2rem; // "Welcome!"
   padding: 1.75rem;
   margin-bottom: 1.5rem;
 
-  h3 {
+  // Card titles only (step titles inside a card are h3 too, styled by .step-title)
+  > h3 {
     font-size: $size-title;
     font-weight: 600;
     margin-bottom: 1.25rem;
@@ -445,11 +446,13 @@ select.shiny-input-select {
 .change-box {
   margin: -0.25rem 0 1.25rem;
 
+  // A quiet link: these actions are rarely needed.
   > summary {
     display: inline-flex;
     align-items: center;
     min-height: $touch;
     color: $primary;
+    font-size: $size-small;
     font-weight: 600;
     cursor: pointer;
     text-decoration: underline;
@@ -584,12 +587,6 @@ input.field-invalid,
 }
 
 // ---- Experiment form: instrument fluids -------------------------------------------
-// One block per fluid (system buffer, system fluid), separated by a thin line.
-.fluid-block + .fluid-block {
-  border-top: 1px solid $primary-soft;
-  padding-top: 1.25rem;
-  margin-top: 0.5rem;
-}
 
 .section-title {
   font-size: $size-body;
@@ -653,42 +650,81 @@ input.field-invalid,
   }
 }
 
-// Checkboxes as large tappable rows, like the Yes / No pills
-.checkbox {
-  margin: 0 0 1rem;
+// "Save answer" under the last section of the experiment form: full width, like Start
+.save-row {
+  margin-bottom: 1.5rem;
 
-  label {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-height: $touch;
-    padding: 0 1rem;
-    border: 1px solid $border;
-    border-radius: $radius;
-    background: white;
-    cursor: pointer;
-
-    &:has(input:checked) {
-      border-color: $primary;
-      background: $primary-soft;
-      color: $primary;
-      font-weight: 600;
-    }
-
-    &:has(input.field-invalid) {
-      border-color: $error;
-    }
-  }
-
-  input {
-    width: 1.2rem;
-    height: 1.2rem;
-    margin: 0;
-    accent-color: $primary;
+  .btn-primary {
+    width: 100%;
   }
 }
 
-// "Save answer" under the last section of the experiment form
-.save-row {
-  margin-bottom: 1.5rem;
+.save-hint {
+  margin: 0.75rem 0 0;
+  font-size: $size-small;
+  color: $text-muted;
+}
+
+// "Another lot used in this run? (rare)  [+ System fluid] [+ System buffer]"
+.add-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid $primary-soft;
+  padding-top: 1rem;
+  margin-top: 0.5rem;
+
+  .add-extra-label {
+    font-size: $size-small;
+    color: $text-muted;
+  }
+
+  .add-extra-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}
+
+// The date on the bottle, when it differs from the list
+.correction-box {
+  border-left: 1px solid $border;
+  padding-left: 1rem;
+  margin-bottom: 1rem;
+}
+
+// One block per fluid lot, separated by a thin line
+.fluid-slot + .fluid-slot {
+  border-top: 1px solid $primary-soft;
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+// ---- "Your answers for this date": one short entry per answer, newest first ----
+.answers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+
+  .answer {
+    padding: 0.75rem 0;
+    border-top: 1px solid $primary-soft;
+
+    &:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+  }
+
+  .answer-main {
+    font-weight: 600;
+  }
+
+  .answer-meta,
+  .answer-details {
+    font-size: $size-small;
+    color: $text-muted;
+    font-variant-numeric: tabular-nums;
+  }
 }
