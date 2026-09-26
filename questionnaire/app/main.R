@@ -27,6 +27,7 @@ box::use(
   app/logic/daily_checks[
     already_checked, load_daily_checks, new_daily_checks, read_controls, read_instruments
   ],
+  app/logic/fluids[fluid_lot_item, fluids_with_changes, read_fluids],
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/records[append_row],
@@ -205,6 +206,7 @@ server <- function(id) {
     base_instruments <- read_instruments(config$get("instruments_file")) # with versions
     base_controls <- read_controls(config$get("controls_file")) # columns: control, lot
     base_products <- read_products(config$get("products_file")) # columns: product, lot
+    base_fluids <- read_fluids(config$get("fluids_file")) # columns: fluid, lot, expiry_date
 
     # ------------------------------------------------------------------------
     # 1b. Change log: corrected versions and added lots
@@ -223,6 +225,7 @@ server <- function(id) {
     instruments <- shiny$reactive(apply_version_changes(base_instruments, changes()))
     controls <- shiny$reactive(add_logged_lots(base_controls, changes(), "control", "control"))
     products <- shiny$reactive(add_logged_lots(base_products, changes(), "product", "product"))
+    fluids <- shiny$reactive(fluids_with_changes(base_fluids, changes()))
 
     # Logs one change with the user's name (from the landing page) and the time.
     # Rows logged by one action share a change_id, so they can be undone together.
@@ -268,6 +271,16 @@ server <- function(id) {
     remove_product_lot <- function(product, lot) {
       record_change("product", product, "lot_removed", lot, "")
     }
+    # A new fluid lot is logged with its expiry date (two rows, one change_id).
+    add_fluid_lot <- function(fluid, lot, expiry_date) {
+      change_id <- new_change_id()
+      record_change("fluid", fluid, "lot", "", lot, change_id = change_id)
+      record_change("fluid", fluid_lot_item(fluid, lot), "expiry_date", "",
+        format(as.Date(expiry_date), "%Y-%m-%d"),
+        change_id = change_id
+      )
+    }
+    remove_fluid_lot <- function(fluid, lot) record_change("fluid", fluid, "lot_removed", lot, "")
 
     # ------------------------------------------------------------------------
     # 2. Landing page and routing
@@ -426,13 +439,11 @@ server <- function(id) {
         user = info$name,
         experiment = info$experiment_type,
         run_type = info$run_type,
-        instrument = answer$instrument,
-        product = answer$product,
-        lot = answer$lot
+        answer = answer
       )
       append_row(response, responses_file)
       responses(load_responses(responses_file))
-      # The confirmation is shown in the form itself (see insert_product.R).
+      # The confirmation is shown in the form itself (see experiment_form.R).
     }
 
     # Instruments with a daily check on the chosen date: the only ones that can
@@ -443,20 +454,23 @@ server <- function(id) {
     })
 
     # One module per experiment; each returns its answer after "Save answer".
-    detection_submission <- detection_capability$server("detection_capability",
+    # What every experiment page gets (see app/view/experiment_form.R).
+    experiment_date <- shiny$reactive(experiment()$experiment_date)
+    form_inputs <- list(
       product_id = products,
       checked_instruments = checked_instruments,
       changes = changes,
       add_product_lot = add_product_lot,
-      remove_product_lot = remove_product_lot
+      remove_product_lot = remove_product_lot,
+      fluids = fluids,
+      experiment_date = experiment_date,
+      add_fluid_lot = add_fluid_lot,
+      remove_fluid_lot = remove_fluid_lot
     )
-    linearity_submission <- linearity$server("linearity",
-      product_id = products,
-      checked_instruments = checked_instruments,
-      changes = changes,
-      add_product_lot = add_product_lot,
-      remove_product_lot = remove_product_lot
+    detection_submission <- do.call(
+      detection_capability$server, c(list("detection_capability"), form_inputs)
     )
+    linearity_submission <- do.call(linearity$server, c(list("linearity"), form_inputs))
 
     shiny$observeEvent(detection_submission(), save_answer(detection_submission()))
     shiny$observeEvent(linearity_submission(), save_answer(linearity_submission()))

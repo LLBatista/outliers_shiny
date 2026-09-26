@@ -77,23 +77,24 @@ last_version_change <- function(changes, instrument) {
   mine[mine$change_id == mine$change_id[nrow(mine)], ]
 }
 
-#' A lots table (`key` column + lot) with the lots added and removed in the app
-#' applied, in the order they happened. `what` is "control" or "product".
+#' A lots table (`key` column + lot, and maybe other columns) with the lots added and
+#' removed in the app applied, in the order they happened. `what` is "control",
+#' "product" or "fluid". Other columns of an added lot are left empty.
 #' @export
 add_logged_lots <- function(table, changes, what, key) {
   lot_changes <- changes[changes$what == what & changes$field %in% c("lot", "lot_removed"), ]
-  table <- table[, c(key, "lot")]
   for (i in seq_len(nrow(lot_changes))) {
     change <- lot_changes[i, ]
     if (change$field == "lot") {
-      new_row <- data.frame(change$item, change$new_value, stringsAsFactors = FALSE)
-      names(new_row) <- c(key, "lot")
+      new_row <- as.data.frame(lapply(table, function(column) ""), stringsAsFactors = FALSE)
+      new_row[[key]] <- change$item
+      new_row$lot <- change$new_value
       table <- rbind(table, new_row)
     } else {
       table <- table[!(table[[key]] == change$item & table$lot == change$old_value), ]
     }
   }
-  table[!duplicated(table), ]
+  table[!duplicated(table[, c(key, "lot")]), ]
 }
 
 #' If `lot` of `item` is currently in the list because it was added in the app,

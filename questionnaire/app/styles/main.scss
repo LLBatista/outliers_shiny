@@ -582,3 +582,113 @@ input.field-invalid,
     width: 100%;
   }
 }
+
+// ---- Experiment form: instrument fluids -------------------------------------------
+// One block per fluid (system buffer, system fluid), separated by a thin line.
+.fluid-block + .fluid-block {
+  border-top: 1px solid $primary-soft;
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.section-title {
+  font-size: $size-body;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+// The rarely used second lot of a fluid
+.second-lot {
+  border-left: 1px solid $border;
+  padding-left: 1rem;
+  margin-bottom: 0.5rem;
+
+  h5 {
+    font-size: $size-body;
+    font-weight: 600;
+    margin: 0.5rem 0 0.75rem;
+  }
+}
+
+// "Add a second system buffer" and similar actions shown as links
+.btn-link.link-action {
+  min-height: $touch;
+  padding: 0;
+  border: 0;
+  background: none !important;
+  font-weight: 600;
+  color: $primary;
+  text-underline-offset: 3px;
+}
+
+// Expiry date of the chosen lot, to compare with the bottle
+.expiry-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.75rem;
+  background: $primary-soft;
+  border-radius: $radius;
+  padding: 0.75rem 1rem;
+  margin: -0.25rem 0 0.75rem;
+
+  span {
+    font-size: $size-small;
+    color: $text-muted-on-tint;
+  }
+
+  p {
+    flex-basis: 100%;
+    margin: 0.25rem 0 0;
+    font-weight: 600;
+  }
+
+  &.expired {
+    background: #fdecea;
+    color: $error;
+
+    span {
+      color: $error;
+    }
+  }
+}
+
+// Checkboxes as large tappable rows, like the Yes / No pills
+.checkbox {
+  margin: 0 0 1rem;
+
+  label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: $touch;
+    padding: 0 1rem;
+    border: 1px solid $border;
+    border-radius: $radius;
+    background: white;
+    cursor: pointer;
+
+    &:has(input:checked) {
+      border-color: $primary;
+      background: $primary-soft;
+      color: $primary;
+      font-weight: 600;
+    }
+
+    &:has(input.field-invalid) {
+      border-color: $error;
+    }
+  }
+
+  input {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin: 0;
+    accent-color: $primary;
+  }
+}
+
+// "Save answer" under the last section of the experiment form
+.save-row {
+  margin-bottom: 1.5rem;
+}

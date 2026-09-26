@@ -292,6 +292,8 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
             <ul>
               <li>The instrument list only shows instruments with a daily check on that date. A notice explains what to do when there are none.</li>
               <li>Product, then its lot. Missing lots can be added.</li>
+              <li>Instrument fluids: system buffer and system fluid lots, with the expiry date to confirm against the bottle; new lots with expiry date; a rare second lot.</li>
+              <li>Sample preparation: vortexed, thawed, and for how many minutes.</li>
               <li>After a save, the app confirms it and clears product and lot. The instrument stays selected.</li>
               <li>"Your answers for this date" lists the user's own answers.</li>
             </ul>
@@ -365,8 +367,9 @@ footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--line);
               <tr><td class="mono">users.csv, assays.csv</td><td>Names, experiment types</td><td><span class="pill yes">yes</span></td></tr>
               <tr><td class="mono">instruments.csv</td><td>Instrument, software and firmware version</td><td><span class="pill yes">yes</span></td></tr>
               <tr><td class="mono">controls.csv, products.csv</td><td>Name and lot</td><td><span class="pill yes">yes</span></td></tr>
+              <tr><td class="mono">fluids.csv</td><td>Fluid, lot and expiry date (example values for now)</td><td><span class="pill yes">yes</span></td></tr>
               <tr><td class="mono">daily_checks.csv</td><td>One row per instrument per day, with who and when</td><td><span class="pill no">no</span></td></tr>
-              <tr><td class="mono">responses.csv</td><td>Experiment answers, with type of run, instrument and time</td><td><span class="pill no">no</span></td></tr>
+              <tr><td class="mono">responses.csv</td><td>Experiment answers: type of run, instrument, product, fluid lots and expiry dates, sample preparation, and time</td><td><span class="pill no">no</span></td></tr>
               <tr><td class="mono">change_log.csv</td><td>Corrections and added lots, with who and when</td><td><span class="pill no">no</span></td></tr>
             </tbody>
           </table>

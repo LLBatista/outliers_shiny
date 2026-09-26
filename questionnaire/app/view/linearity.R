@@ -4,21 +4,21 @@ box::use(
 )
 
 box::use(
-  app/view/insert_product,
+  app/view/experiment_form,
 )
 
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
-  # For now only the product and lot; the fields for this experiment go here later.
-  insert_product$ui(ns("product"))
+  # For now only the common form; the fields for this experiment go here later.
+  experiment_form$ui(ns("form"))
 }
 
-#' Passes everything on to the product form (see insert_product.R).
+#' Passes everything on to the common experiment form (see experiment_form.R).
 #' @export
 server <- function(id, ...) {
   args <- list(...)
   shiny$moduleServer(id, function(input, output, session) {
-    do.call(insert_product$server, c(list("product"), args))
+    do.call(experiment_form$server, c(list("form"), args))
   })
 }

@@ -6,6 +6,7 @@
 # - "Lot not listed? Add it": a small form to add a lot (asks for confirmation first,
 #   because the new lot is added to the list for everyone).
 # Every change is logged with the user's name and the time (see main.R).
+# With `ask_expiry = TRUE` (fluids), a new lot also needs its expiry date.
 box::use(
   shiny,
 )
@@ -16,7 +17,7 @@ box::use(
 )
 
 #' @export
-ui <- function(id) {
+ui <- function(id, ask_expiry = FALSE) {
   ns <- shiny$NS(id)
   shiny$tagList(
     # Who added the chosen lot (only for lots added in the app), and "Remove this lot".
@@ -49,6 +50,16 @@ ui <- function(id) {
       shiny$tags$summary("Lot not listed? Add it"),
       shiny$textInput(ns("new_lot"), "New lot number", width = "100%"),
       field_errors$message_ui(ns("new_lot")),
+      if (ask_expiry) {
+        shiny$tagList(
+          # Starts empty (not today), so the real expiry date has to be entered.
+          # (Shiny warns about an empty date value; that is expected here.)
+          suppressWarnings(
+            shiny$dateInput(ns("new_expiry"), "Expiry date", value = NA, width = "100%")
+          ),
+          field_errors$message_ui(ns("new_expiry"))
+        )
+      },
       shiny$conditionalPanel(
         condition = "!output.confirming_add",
         ns = ns,
@@ -80,17 +91,40 @@ ui <- function(id) {
   )
 }
 
+# The messages for "Add lot" (NULL = no problem with that field).
+new_lot_errors <- function(lot, existing, ask_expiry, expiry) {
+  errors <- list(
+    new_lot = if (lot == "") {
+      "Please type the lot number."
+    } else if (lot %in% existing) {
+      paste("Lot", lot, "is already in the list.")
+    }
+  )
+  if (ask_expiry) {
+    errors$new_expiry <- if (!shiny$isTruthy(expiry)) "Please choose the expiry date."
+  }
+  errors
+}
+
+# "Add lot SB2603 (expires 31 Jan 2027) to System Buffer for everyone? ..."
+add_question <- function(lot, expiry, item) {
+  expires <- if (!is.null(expiry)) paste0(" (expires ", format(expiry, "%d %b %Y"), ")")
+  paste0("Add lot ", lot, expires, " to ", item, " for everyone? It will be logged with your name.")
+}
+
 #' Arguments (the reactives are functions to call):
 #' - `existing()`: the lots in the list now
 #' - `item()`: the control or product the lots belong to, e.g. "Positive Control"
 #' - `selected()`: the lot chosen in the dropdown
 #' - `changes()`: the change log; `what`: "control" or "product"
-#' - `add(item, lot)` and `remove(item, lot)`: save and log the change (from main.R)
+#' - `add(item, lot)` and `remove(item, lot)`: save and log the change (from main.R);
+#'   with `ask_expiry = TRUE`, `add(item, lot, expiry_date)`
 #' Returns a reactive with the lot that was just added.
 #' @export
-server <- function(id, existing, item, selected, changes, what, add, remove) {
+server <- function(id, existing, item, selected, changes, what, add, remove,
+                   ask_expiry = FALSE) {
   shiny$moduleServer(id, function(input, output, session) {
-    field_errors$clear_on_change(input, session, "new_lot")
+    field_errors$clear_on_change(input, session, c("new_lot", "new_expiry"))
 
     # --- Adding a lot --------------------------------------------------------------
     # The lot waiting for "Yes, add lot" ("" when nothing is waiting).
@@ -98,29 +132,27 @@ server <- function(id, existing, item, selected, changes, what, add, remove) {
     output$confirming_add <- shiny$reactive(pending_add() != "")
     shiny$outputOptions(output, "confirming_add", suspendWhenHidden = FALSE)
 
+    # The expiry date waiting with it (fluids only).
+    pending_expiry <- shiny$reactiveVal(NULL)
+
     shiny$observeEvent(input$add, {
       lot <- trimws(input$new_lot)
-      error <- if (lot == "") {
-        "Please type the lot number."
-      } else if (lot %in% existing()) {
-        paste("Lot", lot, "is already in the list.")
-      } else {
-        ""
-      }
-      if (field_errors$show(session, list(new_lot = error))) {
+      errors <- new_lot_errors(lot, existing(), ask_expiry, input$new_expiry)
+      if (field_errors$show(session, errors)) {
+        pending_expiry(if (ask_expiry) input$new_expiry)
         added_message("")
         pending_add(lot)
         session$sendCustomMessage("focus-element", session$ns("confirm_add"))
       }
     })
 
-    output$add_question_text <- shiny$renderText(paste0(
-      "Add lot ", pending_add(), " to ", item(), " for everyone? ",
-      "It will be logged with your name."
-    ))
+    output$add_question_text <- shiny$renderText(
+      add_question(pending_add(), pending_expiry(), item())
+    )
 
     # Typing again, or Cancel, drops the waiting lot.
     shiny$observeEvent(input$new_lot, pending_add(""), ignoreInit = TRUE)
+    shiny$observeEvent(input$new_expiry, pending_add(""), ignoreInit = TRUE)
     shiny$observeEvent(input$cancel_add, {
       pending_add("")
       session$sendCustomMessage("focus-element", session$ns("new_lot"))
@@ -131,7 +163,7 @@ server <- function(id, existing, item, selected, changes, what, add, remove) {
     added <- shiny$eventReactive(input$confirm_add, {
       lot <- pending_add()
       shiny$req(lot != "")
-      add(item(), lot)
+      if (ask_expiry) add(item(), lot, pending_expiry()) else add(item(), lot)
       lot
     })
 
@@ -143,6 +175,7 @@ server <- function(id, existing, item, selected, changes, what, add, remove) {
       added_message(paste("Lot", added(), "added and logged."))
       pending_add("")
       shiny$updateTextInput(session, "new_lot", value = "")
+      if (ask_expiry) suppressWarnings(shiny$updateDateInput(session, "new_expiry", value = NA))
     })
 
     # --- The chosen lot: who added it, and removing it ----------------------------

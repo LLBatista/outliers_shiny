@@ -11,6 +11,8 @@ default:
   instruments_file: "data/instruments.csv"
   # controls:
   controls_file: "data/controls.csv"
+  # instrument fluids (system buffer, system fluid): lots and expiry dates
+  fluids_file: "data/fluids.csv"
   
   # Where submitted answers are appended.
   responses_file: "data/responses.csv"

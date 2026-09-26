@@ -37,13 +37,21 @@ This is a step-by-step form with a progress indicator.
 - Saved to `data/daily_checks.csv`.
 
 ### Page 2b: Experiments (Detection Capability, Linearity)
+Every experiment starts with the same form (`experiment_form.R`), in three sections,
+saved together with one "Save answer" button:
 - **Instrument:** only instruments **with a daily check on the chosen date** are listed.
   - If there are none, a notice explains what to do.
   - Saving is also refused on the server.
 - **Product and lot:** the lot list shows only the chosen product's lots.
   **"Lot not listed? Add it"** is available here too.
+- **Instrument fluids:** system buffer and system fluid, each with its lot.
+  - The expiry date from `data/fluids.csv` is shown, and the user ticks "The expiry
+    date matches the bottle". An expired lot is shown in red (a warning, not a block).
+  - A missing lot can be added with its expiry date (confirmed and logged).
+  - "Add a second system buffer / fluid" for the rare runs that use two lots.
+- **Sample preparation:** vortexed? thawed? and if thawed, for how many minutes.
 - After saving, a confirmation appears and the product and lot are cleared. The
-  instrument is kept.
+  instrument, fluids and sample preparation are kept for the next answer.
 - **"Your answers for this date"** shows the user's own answers.
 - Saved to `data/responses.csv`.
 
@@ -113,8 +121,9 @@ questionnaire/
 | `users.csv`, `assays.csv` | names, experiment types | yes |
 | `instruments.csv` | instrument, software_version, firmware_version | yes |
 | `controls.csv`, `products.csv` | name + lot | yes |
+| `fluids.csv` | fluid, lot, expiry_date (example values; replace with the real list) | yes |
 | `daily_checks.csv` | one row per instrument per day, with who and when | no |
-| `responses.csv` | experiment answers, with type of run, instrument and when | no |
+| `responses.csv` | experiment answers: type of run, instrument, product, fluid lots with expiry dates, sample preparation, and when | no |
 | `change_log.csv` | corrections and added lots, with who and when | no |
 | `daily_checks_old_format.csv` | old file from before the step-by-step check | yes |
 

@@ -1,4 +1,5 @@
-# Shiny module: the form where the user picks the instrument, the product and its lot.
+# Shiny module: the first section of the experiment form: the instrument, the product
+# and its lot. Saving happens in experiment_form.R.
 box::use(
   shiny,
 )
@@ -29,12 +30,7 @@ ui <- function(id) {
       condition = "input.product != ''",
       ns = ns,
       lot_changes$ui(ns("lot_changes"))
-    ),
-    shiny$actionButton(ns("submit"), "Save answer",
-      class = "btn-primary", icon = shiny$icon("check")
-    ),
-    # Confirmation after saving; screen readers read it out (it is a live region).
-    shiny$div(class = "form-success", shiny$textOutput(ns("saved")))
+    )
   )
 }
 
@@ -45,7 +41,11 @@ ui <- function(id) {
 #' - `checked_instruments()`: instruments with a daily check on the chosen date
 #' - `changes()`: the change log (to show who added a lot)
 #' - `add_product_lot(product, lot)`, `remove_product_lot(product, lot)`: lot changes
-#' Returns a reactive that holds the latest saved answer.
+#' Returns a list:
+#' - `collect(focus)`: list(instrument, product, lot), or NULL after showing what is
+#'   missing (`focus`: move focus to the first problem)
+#' - `clear()`: empties product and lot (after saving; the instrument stays)
+#' - `product()`: the chosen product
 #' @export
 server <- function(id, product_id, checked_instruments, changes, add_product_lot,
                    remove_product_lot) {
@@ -66,7 +66,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
           class = "notice",
           shiny$icon("circle-info"),
           "No instrument has had its daily check on this date yet. Do the first run of",
-          "the day on the instrument first (Start over, then answer \"Yes\")."
+          "the day on the instrument first (Change details, then answer \"Yes\")."
         )
       }
     })
@@ -119,41 +119,32 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
       )
     })
 
-    # --- Saving ----------------------------------------------------------------------
+    # --- Collecting the answers (when "Save answer" is pressed) ----------------------
     # Each message is shown under its field and removed when the field changes.
     field_errors$clear_on_change(input, session, c("instrument", "product", "lot"))
 
-    submission <- shiny$eventReactive(input$submit, {
+    collect <- function(focus = TRUE) {
       instrument_error <- if (!shiny$isTruthy(input$instrument)) {
         "Please choose the instrument (only instruments with a daily check on this date)."
       } else if (!(input$instrument %in% checked_instruments())) {
         "This instrument has no daily check on this date."
       }
-      shiny$req(field_errors$show(session, list(
+      ok <- field_errors$show(session, focus = focus, list(
         instrument = instrument_error,
         product = if (!shiny$isTruthy(input$product)) "Please choose a product.",
         lot = if (!shiny$isTruthy(input$lot)) "Please choose a lot."
-      )))
-      list(instrument = input$instrument, product = input$product, lot = input$lot)
-    })
-
-    # After a successful save, confirm it and empty product and lot so the same
-    # answer isn't saved twice (the instrument stays: the next answer is usually on
-    # the same one). The confirmation goes away when the user starts a new answer.
-    saved_message <- shiny$reactiveVal("")
-    shiny$observeEvent(input$product, if (input$product != "") saved_message(""))
-    output$saved <- shiny$renderText(saved_message())
-
-    shiny$observeEvent(submission(), {
-      answer <- submission()
-      saved_message(paste0(
-        "Answer saved: ", answer$product, ", lot ", answer$lot, ", on ", answer$instrument, "."
       ))
+      if (ok) list(instrument = input$instrument, product = input$product, lot = input$lot)
+    }
+
+    # After a save: empty product and lot so the same answer isn't saved twice (the
+    # instrument stays: the next answer is usually on the same one).
+    clear <- function() {
       chosen_lot("")
       shiny$updateSelectInput(session, "product", selected = "")
       shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = ""), selected = "")
-    })
+    }
 
-    submission
+    list(collect = collect, clear = clear, product = shiny$reactive(input$product))
   })
 }
