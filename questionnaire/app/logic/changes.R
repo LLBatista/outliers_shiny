@@ -7,6 +7,7 @@
 #
 # Nothing is ever deleted from the log: undoing a change is logged as a new change.
 box::use(
+  app/logic/i18n[format_date_time, tr],
   app/logic/records[append_row, now_text, read_table],
 )
 
@@ -117,6 +118,5 @@ lot_added_in_app <- function(changes, what, item, lot) {
 #' "Leticia Batista on 26 Sep 2026 at 14:05": who made a change and when.
 #' @export
 changed_by_text <- function(change) {
-  when <- as.POSIXct(substr(change$changed_at[1], 1, 19), format = "%Y-%m-%d %H:%M:%S")
-  paste(change$user[1], "on", format(when, "%d %b %Y at %H:%M"))
+  tr("change.by", user = change$user[1], when = format_date_time(change$changed_at[1]))
 }

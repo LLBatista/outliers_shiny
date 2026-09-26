@@ -5,6 +5,7 @@ box::use(
 )
 
 box::use(
+  app/logic/i18n[tr],
   app/logic/products[lots_for_product],
   app/view/field_errors,
   app/view/lot_changes,
@@ -15,16 +16,20 @@ ui <- function(id) {
   ns <- shiny$NS(id)
   # A step of the experiment form (experiment_form.R); the title is where focus goes.
   shiny$tagList(
-    shiny$h3(id = ns("title"), class = "step-title", "Which instrument, product and lot?"),
+    shiny$h3(id = ns("title"), class = "step-title", tr("product.title")),
     # Only instruments with a daily check on the chosen date can be used.
-    shiny$selectInput(ns("instrument"), "Instrument",
+    shiny$selectInput(ns("instrument"), tr("common.instrument"),
       choices = NULL, selectize = FALSE, width = "100%"
     ),
     field_errors$message_ui(ns("instrument")),
     shiny$uiOutput(ns("no_instrument")),
-    shiny$selectInput(ns("product"), "Product", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$selectInput(ns("product"), tr("product.product"),
+      choices = NULL, selectize = FALSE, width = "100%"
+    ),
     field_errors$message_ui(ns("product")),
-    shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$selectInput(ns("lot"), tr("common.lot"),
+      choices = NULL, selectize = FALSE, width = "100%"
+    ),
     field_errors$message_ui(ns("lot")),
     shiny$conditionalPanel(
       condition = "input.product != ''",
@@ -55,7 +60,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
       available <- checked_instruments()
       current <- shiny$isolate(input$instrument)
       shiny$updateSelectInput(session, "instrument",
-        choices = c("Choose an instrument..." = "", available),
+        choices = c(stats::setNames("", tr("common.choose_instrument")), available),
         selected = if (isTRUE(current %in% available)) current else ""
       )
     })
@@ -65,8 +70,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
         shiny$p(
           class = "notice",
           shiny$icon("circle-info"),
-          "No instrument has had its daily check on this date yet. Do the first run of",
-          "the day on the instrument first (Back to home, then answer \"Yes\")."
+          tr("product.no_instrument")
         )
       }
     })
@@ -78,7 +82,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     shiny$observeEvent(input$product, chosen_product(input$product))
     shiny$observeEvent(product_id(), {
       shiny$updateSelectInput(session, "product",
-        choices = c("Choose a product..." = "", unique(product_id()$product)),
+        choices = c(stats::setNames("", tr("product.choose")), unique(product_id()$product)),
         selected = shiny$isolate(chosen_product())
       )
     })
@@ -99,7 +103,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     shiny$observeEvent(lots(), ignoreNULL = FALSE, {
       current <- shiny$isolate(chosen_lot())
       shiny$updateSelectInput(session, "lot",
-        choices = c("Choose a lot..." = "", lots()),
+        choices = c(stats::setNames("", tr("common.choose_lot")), lots()),
         selected = if (current %in% lots()) current else ""
       )
     })
@@ -118,7 +122,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
     shiny$observeEvent(added(), {
       chosen_lot(added())
       shiny$updateSelectInput(session, "lot",
-        choices = c("Choose a lot..." = "", lots()),
+        choices = c(stats::setNames("", tr("common.choose_lot")), lots()),
         selected = added()
       )
     })
@@ -129,14 +133,14 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
 
     collect <- function(focus = TRUE) {
       instrument_error <- if (!shiny$isTruthy(input$instrument)) {
-        "Please choose the instrument (only instruments with a daily check on this date)."
+        tr("product.error_instrument")
       } else if (!(input$instrument %in% checked_instruments())) {
-        "This instrument has no daily check on this date."
+        tr("product.error_not_checked")
       }
       ok <- field_errors$show(session, focus = focus, list(
         instrument = instrument_error,
-        product = if (!shiny$isTruthy(input$product)) "Please choose a product.",
-        lot = if (!shiny$isTruthy(input$lot)) "Please choose a lot."
+        product = if (!shiny$isTruthy(input$product)) tr("product.error_product"),
+        lot = if (!shiny$isTruthy(input$lot)) tr("common.error_lot")
       ))
       if (ok) list(instrument = input$instrument, product = input$product, lot = input$lot)
     }
@@ -147,7 +151,9 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
       chosen_product("")
       chosen_lot("")
       shiny$updateSelectInput(session, "product", selected = "")
-      shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = ""), selected = "")
+      shiny$updateSelectInput(session, "lot",
+        choices = c(stats::setNames("", tr("common.choose_lot"))), selected = ""
+      )
     }
 
     list(collect = collect, clear = clear, product = shiny$reactive(input$product))

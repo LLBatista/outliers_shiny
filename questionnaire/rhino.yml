@@ -1,1 +1,3 @@
 sass: r
+# main.R gets the request (for the language in the page address), see app/main.R.
+legacy_entrypoint: box_top_level

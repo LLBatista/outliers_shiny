@@ -80,6 +80,16 @@ Samples (+ optional notes) → Save answer**, then a summary and "Add another pr
   lots. The undo is logged as a new change; nothing is deleted from the log.
 - There is no approval by a second person.
 
+### Languages (English / German)
+- **EN | DE** at the top right of the start page. The language is part of the page
+  address (`?lang=de`, handy for a tablet bookmark) and the browser remembers the choice.
+- Without a choice, `default_language` in `config.yml` decides (now `"en"`).
+- All texts are in `app/i18n/translations.csv` (`key, en, de`): wording can be changed
+  there without touching code. Placeholders like `{lot}` must stay.
+- Saved data is the same in both languages (e.g. run type `Retest`, answers `yes`/`no`);
+  only what is shown changes. Names from the lists (instruments, products, experiment
+  types) are shown as they are in the CSV files.
+
 ### Look and usability
 - The colour is Sebia blue (`#004195`).
 - It is built for a **tablet at the bench**: touch targets are at least 48 px, and it
@@ -168,6 +178,7 @@ time a row is saved.
     instrument already checked (with an alert); version history one line per field;
     length limits (versions 5, lots 12 characters); optional notes on controls, answers
     and every change to the lists.
+14. English and German version, with a language switch on the start page.
 
 ---
 

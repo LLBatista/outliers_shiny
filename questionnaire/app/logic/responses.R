@@ -1,5 +1,6 @@
 # Plain R code (no Shiny): building and loading experiment answers.
 box::use(
+  app/logic/i18n[tr],
   app/logic/records[now_text, read_table],
 )
 
@@ -57,15 +58,13 @@ answers_for_table <- function(responses) {
       paste0(" + ", responses[[paste0(prefix, "_lot_2")]])
     ))
   }
-  fluids <- paste0("Fluid ", lots("system_fluid"), " \u00b7 buffer ", lots("system_buffer"))
+  fluids <- vapply(seq_len(nrow(responses)), function(i) {
+    tr("answers.fluids", fluid = lots("system_fluid")[i], buffer = lots("system_buffer")[i])
+  }, character(1))
   fluids[responses$system_fluid_lot == ""] <- ""
-  samples <- paste0(
-    ifelse(responses$samples_vortexed == "yes", "vortexed", "not vortexed"), ", ",
-    ifelse(responses$samples_thawed == "yes",
-      paste0("thawed ", responses$thaw_minutes, " min"), "not thawed"
-    )
+  samples <- describe_samples(
+    responses$samples_vortexed, responses$samples_thawed, responses$thaw_minutes
   )
-  samples[responses$samples_vortexed == ""] <- ""
   data.frame(
     experiment = responses$experiment,
     run_type = responses$run_type,
@@ -78,4 +77,18 @@ answers_for_table <- function(responses) {
     saved_at = responses$saved_at,
     stringsAsFactors = FALSE
   )
+}
+
+#' "vortexed, thawed 30 min" (translated), for each answer; "" when not answered.
+#' @export
+describe_samples <- function(vortexed, thawed, minutes) {
+  text <- paste0(
+    ifelse(vortexed == "yes", tr("samples.is_vortexed"), tr("samples.not_vortexed")), ", ",
+    ifelse(thawed == "yes",
+      vapply(minutes, function(m) tr("samples.is_thawed", minutes = m), character(1)),
+      tr("samples.not_thawed")
+    )
+  )
+  text[vortexed == ""] <- ""
+  text
 }

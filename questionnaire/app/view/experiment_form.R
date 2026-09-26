@@ -10,6 +10,8 @@ box::use(
 )
 
 box::use(
+  app/logic/i18n[format_date, tr],
+  app/logic/responses[describe_samples],
   app/view/fluid_lots,
   app/view/inputs,
   app/view/insert_product,
@@ -17,12 +19,19 @@ box::use(
   app/view/steps,
 )
 
-step_labels <- c(product = "Instrument & product", fluids = "Fluids", samples = "Samples")
+step_labels <- function() {
+  c(
+    product = tr("form.step_product"), fluids = tr("form.step_fluids"),
+    samples = tr("form.step_samples")
+  )
+}
 
 step_buttons <- function(ns, back = NULL, next_id, next_label, next_icon = "arrow-right") {
   shiny$div(
     class = "step-buttons",
-    if (!is.null(back)) shiny$actionButton(ns(back), "Back", icon = shiny$icon("arrow-left")),
+    if (!is.null(back)) {
+      shiny$actionButton(ns(back), tr("common.back"), icon = shiny$icon("arrow-left"))
+    },
     shiny$actionButton(ns(next_id), next_label, class = "btn-primary", icon = shiny$icon(next_icon))
   )
 }
@@ -40,19 +49,21 @@ ui <- function(id) {
       shiny$tabPanel(
         "product",
         insert_product$ui(ns("product")),
-        step_buttons(ns, next_id = "next_product", next_label = "Next")
+        step_buttons(ns, next_id = "next_product", next_label = tr("common.next"))
       ),
       shiny$tabPanel(
         "fluids",
         fluid_lots$ui(ns("fluids")),
-        step_buttons(ns, back = "back_fluids", next_id = "next_fluids", next_label = "Next")
+        step_buttons(ns,
+          back = "back_fluids", next_id = "next_fluids", next_label = tr("common.next")
+        )
       ),
       shiny$tabPanel(
         "samples",
         sample_preparation$ui(ns("samples")),
-        inputs$notes(ns("notes"), "Notes about this answer (optional)"),
+        inputs$notes(ns("notes"), tr("form.notes")),
         step_buttons(ns,
-          back = "back_samples", next_id = "save", next_label = "Save answer",
+          back = "back_samples", next_id = "save", next_label = tr("form.save"),
           next_icon = "check"
         )
       ),
@@ -62,11 +73,10 @@ ui <- function(id) {
         shiny$div(role = "status", shiny$uiOutput(ns("summary"))),
         shiny$p(
           class = "save-hint",
-          "For the next product, the instrument, fluids and sample preparation stay filled",
-          "in. You will see them again before saving: change them if they are different."
+          tr("form.next_hint")
         ),
         step_buttons(ns,
-          next_id = "another", next_label = "Add another product", next_icon = "plus"
+          next_id = "another", next_label = tr("form.another"), next_icon = "plus"
         )
       )
     )
@@ -81,36 +91,36 @@ summary_ui <- function(answer, corrections, title_id) {
       if (length(value) == 0 || value == "") {
         return(NULL)
       }
-      expiry <- format(as.Date(answer[[paste0(prefix, "_expiry", suffix)]]), "%d %b %Y")
-      paste0(value, " (expires ", expiry, ")")
+      expiry <- answer[[paste0(prefix, "_expiry", suffix)]]
+      tr("summary.lot_expires", lot = value, date = format_date(expiry))
     }
-    paste(c(lot(""), lot("_2")), collapse = " and ")
+    paste(c(lot(""), lot("_2")), collapse = tr("common.and"))
   }
-  thawed <- answer$samples_thawed == "yes"
-  samples <- paste0(
-    if (answer$samples_vortexed == "yes") "vortexed" else "not vortexed", ", ",
-    if (thawed) paste("thawed", answer$thaw_minutes, "min") else "not thawed"
-  )
   rows <- list(
-    "Instrument" = answer$instrument,
-    "Product" = paste0(answer$product, ", lot ", answer$lot),
-    "System fluid" = lots("system_fluid"),
-    "System buffer" = lots("system_buffer"),
-    "Samples" = samples,
-    "Notes" = if (answer$notes != "") answer$notes
+    list(tr("common.instrument"), answer$instrument),
+    list(
+      tr("product.product"),
+      tr("summary.product_lot", product = answer$product, lot = answer$lot)
+    ),
+    list(tr("fluid.system_fluid"), lots("system_fluid")),
+    list(tr("fluid.system_buffer"), lots("system_buffer")),
+    list(tr("summary.samples"), describe_samples(
+      answer$samples_vortexed, answer$samples_thawed, answer$thaw_minutes
+    )),
+    if (answer$notes != "") list(tr("summary.notes"), answer$notes)
   )
   rows <- Filter(Negate(is.null), rows)
   shiny$div(
     class = "done-summary",
-    shiny$h3(id = title_id, class = "step-title", shiny$icon("circle-check"), "Answer saved"),
-    shiny$tags$dl(lapply(names(rows), function(name) {
-      shiny$tagList(shiny$tags$dt(name), shiny$tags$dd(rows[[name]]))
+    shiny$h3(id = title_id, class = "step-title", shiny$icon("circle-check"), tr("summary.saved")),
+    shiny$tags$dl(lapply(rows, function(row) {
+      shiny$tagList(shiny$tags$dt(row[[1]]), shiny$tags$dd(row[[2]]))
     })),
     lapply(corrections, function(c) {
-      shiny$p(class = "change-note", shiny$icon("clock-rotate-left"), paste0(
-        "Expiry date of lot ", c$lot, " corrected to ", format(as.Date(c$new), "%d %b %Y"),
-        " in the list."
-      ))
+      shiny$p(
+        class = "change-note", shiny$icon("clock-rotate-left"),
+        tr("summary.corrected", lot = c$lot, date = format_date(c$new))
+      )
     })
   )
 }
@@ -157,7 +167,7 @@ server <- function(id, product_id, checked_instruments, changes, add_product_lot
       shiny$updateTabsetPanel(session, "steps", selected = step)
       if (focus) session$sendCustomMessage("focus-element", session$ns(step_headings[[step]]))
     }
-    output$progress <- shiny$renderUI(steps$progress(step_labels, current_step()))
+    output$progress <- shiny$renderUI(steps$progress(step_labels(), current_step()))
 
     # Coming from the landing page, focus goes to the page title instead (main.R).
     shiny$observeEvent(start(), go_to("product", focus = FALSE))

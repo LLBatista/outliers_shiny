@@ -28,6 +28,7 @@ box::use(
     already_checked, load_daily_checks, new_daily_checks, read_controls, read_instruments
   ],
   app/logic/fluids[fluid_lot_item, fluids_with_changes, read_fluids],
+  app/logic/i18n[format_date, language_from_query, tr, with_language],
   app/logic/options[read_options],
   app/logic/products[read_products],
   app/logic/records[append_row],
@@ -38,6 +39,12 @@ box::use(
   app/view/landing,
   app/view/linearity,
 )
+
+# German texts (ä, ö, ü, ß) need a UTF-8 character setting; some servers (e.g. a bare
+# Docker image) start without one, and then text outputs show "<U+00FC>" instead of "ü".
+if (!isTRUE(l10n_info()[["UTF-8"]])) {
+  invisible(Sys.setlocale("LC_CTYPE", "C.UTF-8"))
+}
 
 # ============================================================================
 # UI
@@ -117,7 +124,7 @@ page_header <- function(heading_id, title, info_id, back_id) {
     shiny$div(
       class = "page-header-row",
       shiny$h2(id = heading_id, title),
-      shiny$actionButton(back_id, "Back to home",
+      shiny$actionButton(back_id, tr("header.back_home"),
         class = "btn-outline-secondary", icon = shiny$icon("house")
       )
     ),
@@ -125,15 +132,47 @@ page_header <- function(heading_id, title, info_id, back_id) {
   )
 }
 
+# Remembers the language chosen with the EN | DE switch in this browser: a later visit
+# without "?lang=" in the address opens in that language again.
+remember_language_script <- function(lang) {
+  shiny$tags$script(shiny$HTML(paste0("
+    (function() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var stored = window.localStorage.getItem('lab-lang');
+        if (params.has('lang')) {
+          window.localStorage.setItem('lab-lang', params.get('lang'));
+        } else if (stored && stored !== '", lang, "') {
+          params.set('lang', stored);
+          window.location.replace(window.location.pathname + '?' + params.toString());
+        }
+      } catch (e) {}
+    })();
+  ")))
+}
+
+# The language of a visit: from the page address (?lang=de), else from config.yml.
+visit_language <- function(query) {
+  language_from_query(query, default = config$get("default_language"))
+}
+
+#' The page, built in the language of the visit. (Rhino calls this with the request,
+#' because rhino.yml sets `legacy_entrypoint: box_top_level`.)
 #' @export
-ui <- function(id) {
+ui <- function(request) {
+  lang <- visit_language(request$QUERY_STRING)
+  with_language(lang, page_ui("app", lang))
+}
+
+page_ui <- function(id, lang) {
   ns <- shiny$NS(id)
 
   shiny$fluidPage(
-    title = "Lab Documentation Prototype",
+    title = tr("app.title"),
     # Tells screen readers which language to read in. (fluidPage(lang = ...) has no
     # effect here, because Rhino wraps this UI in its own page.)
-    shiny$tags$head(shiny$tags$script("document.documentElement.lang = 'en';")),
+    shiny$tags$head(shiny$tags$script(paste0("document.documentElement.lang = '", lang, "';"))),
+    shiny$tags$head(remember_language_script(lang)),
 
     # Colours and font for the whole app (card styles live in app/styles/main.scss)
     theme = bslib$bs_theme(
@@ -169,7 +208,7 @@ ui <- function(id) {
           class = "questionnaire-page narrow",
           page_header(
             heading_id = ns("daily_heading"),
-            title = "First run of the day",
+            title = tr("daily.page_title"),
             info_id = ns("daily_info"), # chips: user, date
             back_id = ns("back_home_daily")
           ),
@@ -201,7 +240,7 @@ ui <- function(id) {
               linearity$ui(ns("linearity"))
             )
           ),
-          answers_list$ui(ns("responses"), title = "Your answers for this date")
+          answers_list$ui(ns("responses"), title = tr("answers.title_date"))
         )
       )
     )
@@ -212,8 +251,15 @@ ui <- function(id) {
 # Server
 # ============================================================================
 
+#' The server: remembers the language of the visit (so `tr()` uses it everywhere),
+#' then runs the app.
 #' @export
-server <- function(id) {
+server <- function(input, output, session) {
+  session$userData$lang <- visit_language(shiny$isolate(session$clientData$url_search))
+  app_server("app")
+}
+
+app_server <- function(id) {
   shiny$moduleServer(id, function(input, output, session) {
     # ------------------------------------------------------------------------
     # 1. Settings and options (file paths come from config.yml)
@@ -397,7 +443,7 @@ server <- function(id) {
         shiny$span(class = "chip", shiny$icon("user"), info$name),
         shiny$span(
           class = "chip", shiny$icon("calendar"),
-          format(as.Date(info$experiment_date), "%d %b %Y")
+          format_date(info$experiment_date)
         ),
         ...
       )
@@ -405,7 +451,9 @@ server <- function(id) {
     output$daily_info <- shiny$renderUI(info_chips())
     # The experiment page also shows the type of run (regular, retest or pre-test).
     output$experiment_info <- shiny$renderUI(
-      info_chips(shiny$span(class = "chip", shiny$icon("repeat"), experiment()$run_type))
+      info_chips(shiny$span(
+        class = "chip", shiny$icon("repeat"), landing$run_type_label(experiment()$run_type)
+      ))
     )
     output$experiment_title <- shiny$renderText(experiment()$experiment_type)
 
@@ -427,7 +475,7 @@ server <- function(id) {
       info <- experiment() # from the landing page
       if (is_already_checked(check$instrument)) {
         shiny$showNotification(
-          paste("A daily check for", check$instrument, "was already saved on this date."),
+          tr("daily.already_saved_notification", instrument = check$instrument),
           type = "error"
         )
         return(FALSE)
@@ -526,7 +574,7 @@ server <- function(id) {
     })
     answers_list$server("responses",
       answers = my_answers,
-      empty_text = "No answers saved for this date yet. They will appear here after you save one."
+      empty_text = tr("answers.empty_date")
     )
   })
 }

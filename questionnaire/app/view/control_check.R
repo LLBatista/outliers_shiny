@@ -6,12 +6,11 @@ box::use(
 )
 
 box::use(
+  app/logic/i18n[tr],
   app/view/field_errors,
   app/view/inputs,
   app/view/lot_changes,
 )
-
-yes_no <- c("Yes" = "yes", "No" = "no")
 
 #' `title` is shown above the form, `next_label` on the main button.
 #' @export
@@ -19,26 +18,28 @@ ui <- function(id, title, next_label) {
   ns <- shiny$NS(id)
   shiny$tagList(
     shiny$h3(id = ns("title"), class = "step-title", title),
-    shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$selectInput(ns("lot"), tr("common.lot"),
+      choices = NULL, selectize = FALSE, width = "100%"
+    ),
     field_errors$message_ui(ns("lot")),
     lot_changes$ui(ns("lot_changes")),
-    shiny$radioButtons(ns("valid"), "Was the control valid?",
-      choices = yes_no, selected = character(0), inline = TRUE
+    shiny$radioButtons(ns("valid"), tr("control.valid"),
+      choices = inputs$yes_no(), selected = character(0), inline = TRUE
     ),
     field_errors$message_ui(ns("valid")),
     # Only asked when the control was not valid.
     shiny$conditionalPanel(
       condition = "input.valid == 'no'",
       ns = ns,
-      shiny$radioButtons(ns("rerun_valid"), "Was the rerun valid?",
-        choices = yes_no, selected = character(0), inline = TRUE
+      shiny$radioButtons(ns("rerun_valid"), tr("control.rerun_valid"),
+        choices = inputs$yes_no(), selected = character(0), inline = TRUE
       ),
       field_errors$message_ui(ns("rerun_valid"))
     ),
-    inputs$notes(ns("notes"), "Notes about this control (optional)"),
+    inputs$notes(ns("notes"), tr("control.notes")),
     shiny$div(
       class = "step-buttons",
-      shiny$actionButton(ns("back"), "Back", icon = shiny$icon("arrow-left")),
+      shiny$actionButton(ns("back"), tr("common.back"), icon = shiny$icon("arrow-left")),
       shiny$actionButton(ns("done"), next_label,
         class = "btn-primary", icon = shiny$icon("arrow-right")
       )
@@ -46,7 +47,8 @@ ui <- function(id, title, next_label) {
   )
 }
 
-#' - `control`: the control's name, e.g. "Positive Control"
+#' - `control`: the control's name in data/controls.csv, e.g. "Positive Control";
+#'   `label`: how it is shown, e.g. "Positivkontrolle"
 #' - `lots()`: the lots to choose from (a reactive: it changes when a lot is added)
 #' - `reset()`: when it changes, the answers are cleared
 #' - `changes()`: the change log (to show who added a lot)
@@ -56,7 +58,7 @@ ui <- function(id, title, next_label) {
 #' - `result`: the answers (lot, valid, rerun_valid, notes), after the main button is clicked
 #' - `back`: changes when the Back button is clicked
 #' @export
-server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
+server <- function(id, control, label, lots, reset, changes, add_lot, remove_lot) {
   shiny$moduleServer(id, function(input, output, session) {
     # The lot the user chose, kept here so it survives when the list is refreshed.
     chosen_lot <- shiny$reactiveVal("")
@@ -66,7 +68,7 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
     shiny$observeEvent(lots(), ignoreNULL = FALSE, {
       current <- shiny$isolate(chosen_lot())
       shiny$updateSelectInput(session, "lot",
-        choices = c("Choose a lot..." = "", lots()),
+        choices = c(setNames("", tr("common.choose_lot")), lots()),
         selected = if (current %in% lots()) current else ""
       )
     })
@@ -76,6 +78,7 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
     added <- lot_changes$server("lot_changes",
       existing = lots,
       item = shiny$reactive(control),
+      item_label = shiny$reactive(label),
       selected = shiny$reactive(input$lot),
       changes = changes,
       what = "control",
@@ -85,7 +88,7 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
     shiny$observeEvent(added(), {
       chosen_lot(added())
       shiny$updateSelectInput(session, "lot",
-        choices = c("Choose a lot..." = "", lots()),
+        choices = c(setNames("", tr("common.choose_lot")), lots()),
         selected = added()
       )
     })
@@ -110,10 +113,10 @@ server <- function(id, control, lots, reset, changes, add_lot, remove_lot) {
 
     result <- shiny$eventReactive(input$done, {
       ok <- field_errors$show(session, list(
-        lot = if (!shiny$isTruthy(input$lot)) "Please choose the lot.",
-        valid = if (!shiny$isTruthy(input$valid)) "Please say if the control was valid.",
+        lot = if (!shiny$isTruthy(input$lot)) tr("common.error_lot"),
+        valid = if (!shiny$isTruthy(input$valid)) tr("control.error_valid"),
         rerun_valid = if (identical(input$valid, "no") && !shiny$isTruthy(input$rerun_valid)) {
-          "Please say if the rerun was valid."
+          tr("control.error_rerun")
         }
       ))
       shiny$req(ok)

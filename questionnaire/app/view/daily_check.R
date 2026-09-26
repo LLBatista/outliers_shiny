@@ -9,6 +9,7 @@ box::use(
 
 box::use(
   app/logic/daily_checks[lots_for_control],
+  app/logic/i18n[tr],
   app/view/control_check,
   app/view/field_errors,
   app/view/steps,
@@ -16,9 +17,12 @@ box::use(
 )
 
 # The steps shown in the progress bar at the top, in order.
-step_labels <- c(
-  instrument = "Instrument", positive = "Positive control", negative = "Negative control"
-)
+step_labels <- function() {
+  c(
+    instrument = tr("daily.step_instrument"), positive = tr("control.positive"),
+    negative = tr("control.negative")
+  )
+}
 
 # The alert for an instrument that was already checked on the chosen date.
 already_checked_notice <- function(instrument) {
@@ -26,9 +30,8 @@ already_checked_notice <- function(instrument) {
     class = "notice warning", role = "status",
     shiny$icon("triangle-exclamation"),
     shiny$span(
-      shiny$strong(paste(instrument, "already had its daily check on this date.")),
-      "A second check can't be saved. If its versions are wrong, you can still",
-      "correct them below; the check saved earlier stays as it is."
+      shiny$strong(tr("daily.already_title", instrument = instrument)),
+      tr("daily.already_text")
     )
   )
 }
@@ -36,23 +39,20 @@ already_checked_notice <- function(instrument) {
 # The message under the instrument when step 1 can't go on (NULL = no problem).
 instrument_error <- function(chosen, checked, edited) {
   if (!shiny$isTruthy(chosen)) {
-    "Please choose an instrument."
+    tr("daily.error_instrument")
   } else if (checked && !edited) {
-    paste(
-      "A daily check for", chosen, "was already saved on this date. You can still",
-      "correct its versions."
-    )
+    tr("daily.error_already", instrument = chosen)
   }
 }
 
 # What the main button of step 1 does, so its label can say so.
 confirm_label <- function(already_checked, edited) {
   if (already_checked && edited) {
-    "Save corrected versions"
+    tr("daily.save_versions")
   } else if (edited) {
-    "Confirm with new versions"
+    tr("daily.confirm_new_versions")
   } else {
-    "Confirm"
+    tr("common.confirm")
   }
 }
 
@@ -73,9 +73,9 @@ ui <- function(id) {
         "instrument",
         shiny$h3(
           id = ns("instrument_title"), class = "step-title",
-          "Which instrument are you checking?"
+          tr("daily.which_instrument")
         ),
-        shiny$selectInput(ns("instrument"), "Instrument",
+        shiny$selectInput(ns("instrument"), tr("common.instrument"),
           choices = NULL, selectize = FALSE, width = "100%"
         ),
         field_errors$message_ui(ns("instrument")),
@@ -86,7 +86,7 @@ ui <- function(id) {
         shiny$div(class = "form-success", shiny$textOutput(ns("versions_saved"))),
         shiny$div(
           class = "step-buttons",
-          shiny$actionButton(ns("confirm_instrument"), "Confirm",
+          shiny$actionButton(ns("confirm_instrument"), tr("common.confirm"),
             class = "btn-primary", icon = shiny$icon("check")
           )
         )
@@ -95,13 +95,15 @@ ui <- function(id) {
       # --- Steps 2 and 3: the controls (same module, used twice) ----------------
       shiny$tabPanel(
         "positive",
-        control_check$ui(ns("positive"), title = "Positive control", next_label = "Next")
+        control_check$ui(ns("positive"),
+          title = tr("control.positive"), next_label = tr("common.next")
+        )
       ),
       shiny$tabPanel(
         "negative",
         control_check$ui(ns("negative"),
-          title = "Negative control",
-          next_label = "Save daily check"
+          title = tr("control.negative"),
+          next_label = tr("daily.save_check")
         )
       ),
 
@@ -112,8 +114,8 @@ ui <- function(id) {
         shiny$div(role = "status", shiny$uiOutput(ns("summary"))),
         shiny$div(
           class = "step-buttons",
-          shiny$actionButton(ns("another"), "Check another instrument", icon = shiny$icon("plus")),
-          shiny$actionButton(ns("continue"), "Continue to an experiment",
+          shiny$actionButton(ns("another"), tr("daily.another"), icon = shiny$icon("plus")),
+          shiny$actionButton(ns("continue"), tr("daily.continue"),
             class = "btn-primary", icon = shiny$icon("arrow-right")
           )
         )
@@ -172,14 +174,16 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
     shiny$observeEvent(input$another, start_over())
     shiny$observeEvent(input$continue, continue_to_experiment())
 
-    output$progress <- shiny$renderUI(steps$progress(step_labels, current_step()))
+    output$progress <- shiny$renderUI(steps$progress(step_labels(), current_step()))
 
     # ------------------------------------------------------------------------
     # Step 1: instrument
     # ------------------------------------------------------------------------
     # The list of instruments itself doesn't change, only their versions.
     shiny$updateSelectInput(session, "instrument",
-      choices = c("Choose an instrument..." = "", shiny$isolate(instruments()$instrument))
+      choices = c(
+        stats::setNames("", tr("common.choose_instrument")), shiny$isolate(instruments()$instrument)
+      )
     )
     field_errors$clear_on_change(input, session, "instrument")
 
@@ -221,7 +225,7 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
         shiny$req(typed)
         change_versions(chosen, typed$software, typed$firmware, typed$note)
         if (checked) {
-          versions_saved("Corrected versions saved and logged. No new daily check was started.")
+          versions_saved(tr("daily.versions_saved"))
           shiny$req(FALSE)
         }
         return(list(
@@ -236,9 +240,10 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
     # ------------------------------------------------------------------------
     # Steps 2 and 3: the controls
     # ------------------------------------------------------------------------
-    control_step <- function(step, control) {
+    control_step <- function(step, control, label) {
       control_check$server(step,
         control = control,
+        label = label,
         lots = shiny$reactive(lots_for_control(controls(), control)),
         reset = reset,
         changes = changes,
@@ -246,8 +251,8 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
         remove_lot = remove_control_lot
       )
     }
-    positive <- control_step("positive", "Positive Control")
-    negative <- control_step("negative", "Negative Control")
+    positive <- control_step("positive", "Positive Control", tr("control.positive"))
+    negative <- control_step("negative", "Negative Control", tr("control.negative"))
 
     shiny$observeEvent(positive$back(), go_to("instrument"), ignoreInit = TRUE)
     shiny$observeEvent(positive$result(), go_to("negative"))
@@ -268,12 +273,14 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
     # ------------------------------------------------------------------------
     describe_control <- function(control) {
       result <- if (control$valid == "yes") {
-        "valid"
+        tr("control.result_valid")
+      } else if (control$rerun_valid == "yes") {
+        tr("control.result_rerun_valid")
       } else {
-        paste("not valid, rerun", if (control$rerun_valid == "yes") "valid" else "not valid")
+        tr("control.result_rerun_not_valid")
       }
-      note <- if (control$notes != "") paste0(" (note: ", control$notes, ")")
-      paste0("Lot ", control$lot, ": ", result, note)
+      note <- if (control$notes != "") tr("control.result_note", note = control$notes)
+      paste0(tr("control.result", lot = control$lot, result = result), note)
     }
 
     output$summary <- shiny$renderUI({
@@ -283,17 +290,17 @@ server <- function(id, instruments, controls, changes, is_already_checked, check
         class = "done-summary",
         shiny$h3(
           id = session$ns("done_title"), class = "step-title",
-          shiny$icon("circle-check"), "Daily check saved"
+          shiny$icon("circle-check"), tr("daily.saved_title")
         ),
         shiny$tags$dl(
-          shiny$tags$dt("Instrument"),
-          shiny$tags$dd(paste0(
-            check$instrument, " (software ", check$software_version,
-            ", firmware ", check$firmware_version, ")"
+          shiny$tags$dt(tr("common.instrument")),
+          shiny$tags$dd(tr("daily.summary_instrument",
+            instrument = check$instrument, software = check$software_version,
+            firmware = check$firmware_version
           )),
-          shiny$tags$dt("Positive control"),
+          shiny$tags$dt(tr("control.positive")),
           shiny$tags$dd(describe_control(check$positive)),
-          shiny$tags$dt("Negative control"),
+          shiny$tags$dt(tr("control.negative")),
           shiny$tags$dd(describe_control(check$negative))
         )
       )

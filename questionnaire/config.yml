@@ -1,6 +1,8 @@
 default:
   rhino_log_level: !expr Sys.getenv("RHINO_LOG_LEVEL", "INFO")
   rhino_log_file: !expr Sys.getenv("RHINO_LOG_FILE", NA)
+  # Language when the page address doesn't say (?lang=en or ?lang=de): "en" or "de".
+  default_language: "en"
   # Where the questionnaire reads its product options from.
   products_file: "data/products.csv"
   # users working

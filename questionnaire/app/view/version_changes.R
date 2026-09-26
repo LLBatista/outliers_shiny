@@ -14,15 +14,26 @@ box::use(
 box::use(
   app/logic/changes[changed_by_text, last_version_change],
   app/logic/daily_checks[instrument_versions],
+  app/logic/i18n[tr],
   app/view/field_errors,
   app/view/inputs,
 )
 
 # How the version fields are called in messages.
-version_names <- c(software_version = "software", firmware_version = "firmware")
+version_names <- function() {
+  c(
+    software_version = tr("version.software_short"),
+    firmware_version = tr("version.firmware_short")
+  )
+}
 
 # How the version fields are called in the history (one line per field).
-version_labels <- c(software_version = "Software", firmware_version = "Firmware")
+version_labels <- function() {
+  c(
+    software_version = tr("version.software_label"),
+    firmware_version = tr("version.firmware_label")
+  )
+}
 
 # The history under the versions: who changed them and when, then one line per
 # changed field ("Software: v01 -> v02"), the note if there is one, and Undo.
@@ -32,16 +43,18 @@ history_ui <- function(change, undo_id) {
     class = "change-note change-history",
     shiny$span(
       shiny$icon("clock-rotate-left"),
-      paste0("Last changed by ", changed_by_text(change), ":")
+      tr("version.last_changed", by = changed_by_text(change))
     ),
     shiny$tags$ul(lapply(seq_len(nrow(change)), function(i) {
       shiny$tags$li(paste0(
-        version_labels[[change$field[i]]], ": ", change$old_value[i], " \u2192 ",
+        version_labels()[[change$field[i]]], ": ", change$old_value[i], " \u2192 ",
         change$new_value[i]
       ))
     })),
-    if (length(note) > 0) shiny$p(class = "change-note-text", paste("Note:", note[1])),
-    shiny$actionButton(undo_id, "Undo this change", class = "btn-link")
+    if (length(note) > 0) {
+      shiny$p(class = "change-note-text", tr("common.note_text", note = note[1]))
+    },
+    shiny$actionButton(undo_id, tr("version.undo"), class = "btn-link")
   )
 }
 
@@ -56,7 +69,7 @@ versions_differ <- function(typed, on_record) {
 
 # "software v01 and firmware v01": the versions an undo goes back to.
 describe_old_versions <- function(change) {
-  paste(version_names[change$field], change$old_value, collapse = " and ")
+  paste(version_names()[change$field], change$old_value, collapse = tr("common.and"))
 }
 
 #' @export
@@ -78,10 +91,10 @@ ui <- function(id) {
         ),
         shiny$div(
           class = "confirm-buttons",
-          shiny$actionButton(ns("confirm_undo"), "Yes, change back",
+          shiny$actionButton(ns("confirm_undo"), tr("common.yes_change_back"),
             class = "btn-primary", icon = shiny$icon("rotate-left")
           ),
-          shiny$actionButton(ns("cancel_undo"), "Cancel")
+          shiny$actionButton(ns("cancel_undo"), tr("common.cancel"))
         )
       )
     ),
@@ -92,17 +105,16 @@ ui <- function(id) {
       ns = ns,
       shiny$tags$details(
         class = "change-box",
-        shiny$tags$summary("Versions not right? Correct them here"),
+        shiny$tags$summary(tr("version.not_right")),
         shiny$p(
           class = "change-hint",
-          "The corrected versions are saved with the button below. They apply for",
-          "everyone and are logged with your name."
+          tr("version.hint")
         ),
-        inputs$limited_text(ns("software"), "Software version", inputs$max_length$version),
+        inputs$limited_text(ns("software"), tr("version.software"), inputs$max_length$version),
         field_errors$message_ui(ns("software")),
-        inputs$limited_text(ns("firmware"), "Firmware version", inputs$max_length$version),
+        inputs$limited_text(ns("firmware"), tr("version.firmware"), inputs$max_length$version),
         field_errors$message_ui(ns("firmware")),
-        inputs$notes(ns("note"), "Why were they corrected? (optional)")
+        inputs$notes(ns("note"), tr("version.why"))
       )
     )
   )
@@ -136,8 +148,8 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
       v <- versions()
       shiny$div(
         class = "version-box",
-        shiny$div(shiny$span("Software version"), shiny$strong(v$software_version)),
-        shiny$div(shiny$span("Firmware version"), shiny$strong(v$firmware_version))
+        shiny$div(shiny$span(tr("version.software")), shiny$strong(v$software_version)),
+        shiny$div(shiny$span(tr("version.firmware")), shiny$strong(v$firmware_version))
       )
     })
 
@@ -167,12 +179,12 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
       max <- inputs$max_length$version
       ok <- field_errors$show(session, list(
         software = if (t$software == "") {
-          "Please fill in the software version."
+          tr("version.error_software")
         } else {
           inputs$too_long(t$software, max)
         },
         firmware = if (t$firmware == "") {
-          "Please fill in the firmware version."
+          tr("version.error_firmware")
         } else {
           inputs$too_long(t$firmware, max)
         }
@@ -210,7 +222,9 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
     output$undo_question_text <- shiny$renderText({
       change <- last_change()
       shiny$req(change)
-      paste0("Change ", instrument(), " back to ", describe_old_versions(change), " for everyone?")
+      tr("version.undo_question",
+        instrument = instrument(), versions = describe_old_versions(change)
+      )
     })
     shiny$observeEvent(input$cancel_undo, pending_undo(FALSE))
 
@@ -221,7 +235,7 @@ server <- function(id, instrument, instruments, changes, undo_versions) {
       shiny$req(pending_undo(), change)
       undo_versions(change)
       pending_undo(FALSE)
-      undo_message("Versions changed back and logged.")
+      undo_message(tr("version.undone"))
     })
 
     reset <- function() {

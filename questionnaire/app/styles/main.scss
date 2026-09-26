@@ -772,3 +772,45 @@ textarea.form-control {
 .experiment-steps .save-hint {
   margin-bottom: 0.5rem;
 }
+
+// ---- Language switch (EN | DE) at the top right of the start card ----
+.landing-card {
+  position: relative;
+}
+
+.lang-switch {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: $touch;
+    min-height: $touch;
+    border-radius: $radius;
+    color: $text-muted;
+    font-size: $size-small;
+    font-weight: 600;
+    text-decoration: none;
+
+    &:hover {
+      background: $primary-soft;
+      color: $primary;
+    }
+
+    &.active {
+      color: $primary;
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+
+    &:focus-visible {
+      outline: 3px solid rgba($primary, 0.35);
+      outline-offset: 2px;
+    }
+  }
+}

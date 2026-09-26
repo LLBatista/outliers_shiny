@@ -14,15 +14,14 @@ box::use(
 box::use(
   app/logic/changes[changed_by_text],
   app/logic/fluids[expiry_of, last_expiry_correction, lots_for_fluid],
+  app/logic/i18n[format_date, tr],
   app/view/date_field,
   app/view/field_errors,
   app/view/inputs,
   app/view/lot_changes,
 )
 
-yes_no <- c("Yes" = "yes", "No" = "no")
-
-nice_date <- function(date) format(as.Date(date), "%d %b %Y")
+nice_date <- function(date) format_date(date)
 
 #' `label`: the title shown above the lot, e.g. "System fluid".
 #' @export
@@ -31,7 +30,9 @@ ui <- function(id, label) {
   shiny$div(
     class = "fluid-slot",
     shiny$h4(id = ns("title"), class = "section-title", label),
-    shiny$selectInput(ns("lot"), "Lot", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$selectInput(ns("lot"), tr("common.lot"),
+      choices = NULL, selectize = FALSE, width = "100%"
+    ),
     field_errors$message_ui(ns("lot")),
     shiny$conditionalPanel(
       condition = "input.lot != ''",
@@ -51,16 +52,16 @@ ui <- function(id, label) {
           ),
           shiny$div(
             class = "confirm-buttons",
-            shiny$actionButton(ns("confirm_undo"), "Yes, change back",
+            shiny$actionButton(ns("confirm_undo"), tr("common.yes_change_back"),
               class = "btn-primary", icon = shiny$icon("rotate-left")
             ),
-            shiny$actionButton(ns("cancel_undo"), "Cancel")
+            shiny$actionButton(ns("cancel_undo"), tr("common.cancel"))
           )
         )
       ),
       shiny$div(class = "form-success", shiny$textOutput(ns("undo_message"))),
-      shiny$radioButtons(ns("matches"), "Does the expiry date on the bottle match?",
-        choices = yes_no, selected = character(0), inline = TRUE
+      shiny$radioButtons(ns("matches"), tr("fluid.matches"),
+        choices = inputs$yes_no(), selected = character(0), inline = TRUE
       ),
       field_errors$message_ui(ns("matches")),
       # Only when it doesn't match: the date printed on the bottle.
@@ -70,14 +71,13 @@ ui <- function(id, label) {
         shiny$div(
           class = "correction-box",
           # Starts empty, so the date has to be read from the bottle.
-          date_field$ui(ns("bottle_expiry"), "Expiry date on the bottle"),
+          date_field$ui(ns("bottle_expiry"), tr("fluid.bottle_expiry")),
           field_errors$message_ui(ns("bottle_expiry")),
           shiny$p(
             class = "change-hint",
-            "When you save, this date is used for this answer and corrects the fluids list",
-            "for everyone. It is logged with your name."
+            tr("fluid.correction_hint")
           ),
-          inputs$notes(ns("correction_note"), "Note about this correction (optional)")
+          inputs$notes(ns("correction_note"), tr("fluid.correction_note"))
         )
       )
     ),
@@ -91,21 +91,19 @@ expiry_box <- function(expiry, experiment_date, correction, undo_id) {
   if (expiry == "") {
     return(shiny$div(
       class = "expiry-box expired",
-      "No expiry date in the list for this lot. Answer \"No\" below and enter the date on",
-      "the bottle."
+      tr("fluid.no_expiry")
     ))
   }
   expired <- isTRUE(as.Date(expiry) < as.Date(experiment_date))
   shiny$tagList(
     shiny$div(
       class = paste("expiry-box", if (expired) "expired"),
-      shiny$span("Expiry date in the list"),
+      shiny$span(tr("fluid.expiry_in_list")),
       shiny$strong(nice_date(expiry)),
       if (expired) {
         shiny$p(
           shiny$icon("triangle-exclamation"),
-          "Expired before the experiment date, so this lot can't be used. Choose another",
-          "lot, or answer \"No\" below if the bottle shows a later date."
+          tr("fluid.expired_box")
         )
       }
     ),
@@ -115,12 +113,13 @@ expiry_box <- function(expiry, experiment_date, correction, undo_id) {
         shiny$span(
           shiny$icon("clock-rotate-left"),
           paste0(
-            "Corrected by ", changed_by_text(correction), " (was ",
-            nice_date(correction$old_value), ").",
-            if (correction$note != "") paste0(" Note: ", correction$note)
+            tr("fluid.corrected_by",
+              by = changed_by_text(correction), was = nice_date(correction$old_value)
+            ),
+            if (correction$note != "") paste0(" ", tr("common.note_text", note = correction$note))
           )
         ),
-        shiny$actionButton(undo_id, "Undo this correction", class = "btn-link")
+        shiny$actionButton(undo_id, tr("fluid.undo"), class = "btn-link")
       )
     }
   )
@@ -131,32 +130,29 @@ expiry_box <- function(expiry, experiment_date, correction, undo_id) {
 # when the user corrected it, otherwise the one in the list.
 lot_error <- function(lot, other_lot, expiry, experiment_date) {
   if (!shiny$isTruthy(lot)) {
-    return("Please choose the lot.")
+    return(tr("common.error_lot"))
   }
   if (identical(lot, other_lot)) {
-    return("This is the same lot as above. Choose the other lot that was used.")
+    return(tr("fluid.error_same_lot"))
   }
   if (expiry != "" && isTRUE(as.Date(expiry) < as.Date(experiment_date))) {
-    paste0(
-      "Lot ", lot, " expired on ", nice_date(expiry),
-      ", before the experiment date. Choose another lot."
-    )
+    tr("fluid.error_expired", lot = lot, date = nice_date(expiry))
   }
 }
 
 matches_error <- function(matches, system_expiry) {
   if (!shiny$isTruthy(matches)) {
-    "Please compare the expiry date with the bottle."
+    tr("fluid.error_compare")
   } else if (system_expiry == "" && matches == "yes") {
-    "There is no date in the list to match. Answer \"No\" and enter the date on the bottle."
+    tr("fluid.error_no_date")
   }
 }
 
 bottle_error <- function(bottle, system_expiry) {
   if (!shiny$isTruthy(bottle)) {
-    "Please enter the expiry date printed on the bottle."
+    tr("fluid.error_bottle")
   } else if (identical(format(bottle), system_expiry)) {
-    "This is the same date as in the list. If it matches the bottle, answer \"Yes\"."
+    tr("fluid.error_same_date")
   }
 }
 
@@ -172,7 +168,8 @@ slot_errors <- function(input, system_expiry, other_lot, experiment_date) {
   )
 }
 
-#' - `fluid()`: the name in data/fluids.csv, e.g. "System fluid" (a reactive)
+#' - `fluid()`: the name in data/fluids.csv, e.g. "System fluid" (a reactive);
+#'   `label`: how it is shown on screen (translated)
 #' - `fluids()`: table with fluid, lot, expiry_date
 #' - `experiment_date()`: the date of the experiment (to warn about expired lots)
 #' - `changes()`: the change log
@@ -188,7 +185,7 @@ slot_errors <- function(input, system_expiry, other_lot, experiment_date) {
 #' - `lot()`: the chosen lot
 #' @export
 server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_lot,
-                   undo_expiry, other_lot = shiny$reactive(NULL)) {
+                   undo_expiry, other_lot = shiny$reactive(NULL), label = fluid()) {
   shiny$moduleServer(id, function(input, output, session) {
     lots <- shiny$reactive(lots_for_fluid(fluids(), fluid()))
     system_expiry <- shiny$reactive(expiry_of(fluids(), fluid(), input$lot))
@@ -204,13 +201,14 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
     shiny$observeEvent(lots(), ignoreNULL = FALSE, {
       current <- shiny$isolate(chosen())
       shiny$updateSelectInput(session, "lot",
-        choices = c("Choose a lot..." = "", lots()),
+        choices = c(stats::setNames("", tr("common.choose_lot")), lots()),
         selected = if (current %in% lots()) current else ""
       )
     })
     select_lot <- function(lot) {
       chosen(lot)
-      shiny$updateSelectInput(session, "lot", choices = c("Choose a lot..." = "", lots()),
+      shiny$updateSelectInput(session, "lot",
+        choices = c(stats::setNames("", tr("common.choose_lot")), lots()),
         selected = lot
       )
     }
@@ -264,8 +262,7 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
     output$undo_question_text <- shiny$renderText({
       shiny$req(correction())
       paste0(
-        "Change the expiry date of lot ", input$lot, " back to ",
-        nice_date(correction()$old_value), " for everyone?"
+        tr("fluid.undo_question", lot = input$lot, date = nice_date(correction()$old_value))
       )
     })
     shiny$observeEvent(input$cancel_undo, pending_undo(FALSE))
@@ -275,7 +272,7 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
       shiny$req(pending_undo(), correction())
       undo_expiry(correction())
       pending_undo(FALSE)
-      undo_message("Expiry date changed back and logged.")
+      undo_message(tr("fluid.undone"))
     })
 
     # --- "Lot not listed? Add it" (the new lot is selected) ---------------------------
@@ -285,6 +282,7 @@ server <- function(id, fluid, fluids, experiment_date, changes, add_lot, remove_
       selected = shiny$reactive(input$lot),
       changes = changes,
       what = "fluid",
+      item_label = shiny$reactive(label),
       add = add_lot,
       remove = remove_lot,
       ask_expiry = TRUE,

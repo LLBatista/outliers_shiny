@@ -4,30 +4,30 @@ box::use(
 )
 
 box::use(
+  app/logic/i18n[tr],
   app/view/field_errors,
+  app/view/inputs,
 )
-
-yes_no <- c("Yes" = "yes", "No" = "no")
 
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
   # A step of the experiment form (experiment_form.R); the title is where focus goes.
   shiny$tagList(
-    shiny$h3(id = ns("title"), class = "step-title", "How were the samples prepared?"),
-    shiny$radioButtons(ns("vortexed"), "Were the samples vortexed?",
-      choices = yes_no, selected = character(0), inline = TRUE
+    shiny$h3(id = ns("title"), class = "step-title", tr("samples.title")),
+    shiny$radioButtons(ns("vortexed"), tr("samples.vortexed"),
+      choices = inputs$yes_no(), selected = character(0), inline = TRUE
     ),
     field_errors$message_ui(ns("vortexed")),
-    shiny$radioButtons(ns("thawed"), "Were the samples thawed?",
-      choices = yes_no, selected = character(0), inline = TRUE
+    shiny$radioButtons(ns("thawed"), tr("samples.thawed"),
+      choices = inputs$yes_no(), selected = character(0), inline = TRUE
     ),
     field_errors$message_ui(ns("thawed")),
     # Only asked when the samples were thawed.
     shiny$conditionalPanel(
       condition = "input.thawed == 'yes'",
       ns = ns,
-      shiny$numericInput(ns("thaw_minutes"), "How long did they thaw? (minutes)",
+      shiny$numericInput(ns("thaw_minutes"), tr("samples.minutes"),
         value = NA, min = 1, max = 1440, step = 1, width = "100%"
       ),
       field_errors$message_ui(ns("thaw_minutes"))
@@ -42,9 +42,9 @@ thaw_minutes_error <- function(thawed, minutes) {
     return(NULL)
   }
   if (!is.numeric(minutes) || is.na(minutes)) {
-    "Please enter how many minutes the samples thawed."
+    tr("samples.error_minutes")
   } else if (minutes <= 0 || minutes > 1440) {
-    "Please check the time: it should be between 1 and 1440 minutes (24 hours)."
+    tr("samples.error_range")
   }
 }
 
@@ -60,8 +60,8 @@ server <- function(id) {
       thawed <- identical(input$thawed, "yes")
       minutes <- input$thaw_minutes
       ok <- field_errors$show(session, focus = focus, list(
-        vortexed = if (!shiny$isTruthy(input$vortexed)) "Please say if the samples were vortexed.",
-        thawed = if (!shiny$isTruthy(input$thawed)) "Please say if the samples were thawed.",
+        vortexed = if (!shiny$isTruthy(input$vortexed)) tr("samples.error_vortexed"),
+        thawed = if (!shiny$isTruthy(input$thawed)) tr("samples.error_thawed"),
         thaw_minutes = thaw_minutes_error(thawed, minutes)
       ))
       if (!ok) {

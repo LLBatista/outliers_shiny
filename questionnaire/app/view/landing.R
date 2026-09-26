@@ -1,41 +1,75 @@
-# Shiny module: the landing page (who, when, first run of the day, which experiment).
+# Shiny module: the landing page (who, when, first run of the day, which experiment),
+# with the language switch (EN | DE).
 box::use(
   shiny,
 )
 
 box::use(
+  app/logic/i18n[current_language, format_date, languages, tr],
   app/view/field_errors,
 )
 
-# Saved with every experiment answer (column run_type in data/responses.csv).
-run_types <- c("Regular", "Retest", "Pre-test")
+# Saved with every experiment answer (column run_type in data/responses.csv). The saved
+# value is always the English code ("Regular", "Retest", "Pre-test"); only the label
+# shown is translated.
+run_type_labels <- function() {
+  stats::setNames(
+    c("Regular", "Retest", "Pre-test"),
+    c(tr("run.regular"), tr("run.retest"), tr("run.pretest"))
+  )
+}
+
+# "EN | DE": links that reload the page in the other language (the choice is also
+# remembered in the browser, see main.R).
+language_switch <- function() {
+  current <- current_language()
+  shiny$tags$nav(
+    class = "lang-switch", `aria-label` = tr("landing.language"),
+    lapply(names(languages), function(code) {
+      shiny$tags$a(
+        href = paste0("?lang=", code), lang = code, hreflang = code,
+        title = languages[[code]],
+        `aria-current` = if (code == current) "true",
+        class = if (code == current) "active",
+        toupper(code)
+      )
+    })
+  )
+}
 
 #' @export
 ui <- function(id) {
   ns <- shiny$NS(id)
+  german <- current_language() == "de"
   shiny$div(
     class = "landing-card",
+    language_switch(),
     shiny$div(class = "landing-icon", shiny$icon("flask")),
-    shiny$h2(id = ns("title"), "Welcome!"),
-    shiny$p(class = "subtitle", "Choose your name and the date to get started."),
-    shiny$selectInput(ns("name"), "Your name", choices = NULL, selectize = FALSE, width = "100%"),
+    shiny$h2(id = ns("title"), tr("landing.welcome")),
+    shiny$p(class = "subtitle", tr("landing.subtitle")),
+    shiny$selectInput(ns("name"), tr("landing.name"),
+      choices = NULL, selectize = FALSE, width = "100%"
+    ),
     field_errors$message_ui(ns("name")),
     # No future dates: records can only be for today or earlier.
-    shiny$dateInput(ns("experiment_date"), "Date",
-      value = Sys.Date(), max = Sys.Date(), width = "100%"
+    shiny$dateInput(ns("experiment_date"), tr("landing.date"),
+      value = Sys.Date(), max = Sys.Date(), width = "100%",
+      format = if (german) "dd.mm.yyyy" else "yyyy-mm-dd",
+      language = current_language(), weekstart = if (german) 1 else 0
     ),
     field_errors$message_ui(ns("experiment_date")),
     # Which instruments already had their daily check on the chosen date.
     shiny$uiOutput(ns("daily_status")),
-    shiny$radioButtons(ns("first_run"), "Is this the first run of the day?",
-      choices = c("Yes" = "yes", "No" = "no"), selected = character(0), inline = TRUE
+    shiny$radioButtons(ns("first_run"), tr("landing.first_run"),
+      choices = stats::setNames(c("yes", "no"), c(tr("common.yes"), tr("common.no"))),
+      selected = character(0), inline = TRUE
     ),
     field_errors$message_ui(ns("first_run")),
     # Only shown when this is NOT the first run of the day.
     shiny$conditionalPanel(
       condition = "input.first_run == 'no'",
       ns = ns,
-      shiny$selectInput(ns("experiment_type"), "Type of experiment",
+      shiny$selectInput(ns("experiment_type"), tr("landing.experiment_type"),
         choices = NULL, selectize = FALSE, width = "100%"
       ),
       field_errors$message_ui(ns("experiment_type")),
@@ -46,14 +80,14 @@ ui <- function(id) {
         # Three options: stacked, one per line, so none wraps on its own.
         shiny$div(
           class = "stacked-options",
-          shiny$radioButtons(ns("run_type"), "Type of run",
-            choices = run_types, selected = "Regular", inline = TRUE
+          shiny$radioButtons(ns("run_type"), tr("landing.run_type"),
+            choices = run_type_labels(), selected = "Regular", inline = TRUE
           )
         ),
         field_errors$message_ui(ns("run_type"))
       )
     ),
-    shiny$actionButton(ns("start"), "Start",
+    shiny$actionButton(ns("start"), tr("landing.start"),
       class = "btn-primary", icon = shiny$icon("arrow-right")
     )
   )
@@ -64,21 +98,17 @@ start_errors <- function(input) {
   experiment <- identical(input$first_run, "no")
   date <- input$experiment_date
   list(
-    name = if (input$name == "") "Please choose your name.",
+    name = if (input$name == "") tr("landing.error_name"),
     experiment_date = if (!shiny$isTruthy(date)) {
-      "Please choose the date."
+      tr("landing.error_date")
     } else if (date > Sys.Date()) {
-      "The date can't be in the future."
+      tr("landing.error_future")
     },
-    first_run = if (!shiny$isTruthy(input$first_run)) {
-      "Please say if this is the first run of the day."
-    },
+    first_run = if (!shiny$isTruthy(input$first_run)) tr("landing.error_first_run"),
     experiment_type = if (experiment && input$experiment_type == "") {
-      "Please choose the type of experiment."
+      tr("landing.error_experiment")
     },
-    run_type = if (experiment && !shiny$isTruthy(input$run_type)) {
-      "Please say if this is a regular run, a retest or a pre-test."
-    }
+    run_type = if (experiment && !shiny$isTruthy(input$run_type)) tr("landing.error_run_type")
   )
 }
 
@@ -91,10 +121,10 @@ start_errors <- function(input) {
 server <- function(id, people, experiment_type, checked_on, first_run_answer) {
   shiny$moduleServer(id, function(input, output, session) {
     shiny$updateSelectInput(session, "name",
-      choices = c("Choose your name..." = "", people)
+      choices = c(stats::setNames("", tr("landing.choose_name")), people)
     )
     shiny$updateSelectInput(session, "experiment_type",
-      choices = c("Choose an experiment..." = "", experiment_type)
+      choices = c(stats::setNames("", tr("landing.choose_experiment")), experiment_type)
     )
 
     shiny$observeEvent(first_run_answer(), ignoreInit = TRUE, {
@@ -130,12 +160,14 @@ server <- function(id, people, experiment_type, checked_on, first_run_answer) {
     output$daily_status <- shiny$renderUI({
       shiny$req(input$experiment_date)
       checked <- sort(checked_on(input$experiment_date))
-      title <- paste("Checked on", format(input$experiment_date, "%d %b %Y"))
       shiny$div(
         class = "daily-status",
-        shiny$p(class = "daily-status-title", title),
+        shiny$p(
+          class = "daily-status-title",
+          tr("landing.checked_on", date = format_date(input$experiment_date))
+        ),
         if (length(checked) == 0) {
-          shiny$p(class = "daily-status-empty", "No instrument has had its daily check yet.")
+          shiny$p(class = "daily-status-empty", tr("landing.none_checked"))
         } else {
           shiny$tags$ul(lapply(checked, function(instrument) {
             shiny$tags$li(class = "done", shiny$icon("circle-check"), shiny$span(instrument))
@@ -146,4 +178,11 @@ server <- function(id, people, experiment_type, checked_on, first_run_answer) {
 
     submission
   })
+}
+
+#' How a saved run type is shown (e.g. "Retest" -> "Wiederholungstest").
+#' @export
+run_type_label <- function(code) {
+  labels <- run_type_labels()
+  if (code %in% labels) names(labels)[labels == code] else code
 }

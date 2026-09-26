@@ -9,6 +9,7 @@ box::use(
 
 box::use(
   app/logic/fluids[fluid_names],
+  app/logic/i18n[tr],
   app/view/fluid_slot,
 )
 
@@ -20,14 +21,13 @@ extra_id <- function(key) paste0("extra_", key)
 ui <- function(id) {
   ns <- shiny$NS(id)
   extras <- lapply(keys, function(key) {
-    label <- fluid_names[[key]]
     shiny$conditionalPanel(
       condition = paste0("output.", extra_id(key)),
       ns = ns,
       shiny$div(
         class = "second-lot",
-        fluid_slot$ui(ns(extra_id(key)), paste("Second", tolower(label))),
-        shiny$actionButton(ns(paste0("remove_", key)), paste("Remove the second", tolower(label)),
+        fluid_slot$ui(ns(extra_id(key)), tr(paste0("fluid.", key, ".second"))),
+        shiny$actionButton(ns(paste0("remove_", key)), tr(paste0("fluid.", key, ".remove_second")),
           class = "btn-link link-action", icon = shiny$icon("xmark")
         )
       )
@@ -37,13 +37,15 @@ ui <- function(id) {
     shiny$conditionalPanel(
       condition = paste0("!output.", extra_id(key)),
       ns = ns,
-      shiny$actionButton(ns(paste0("add_", key)), fluid_names[[key]], icon = shiny$icon("plus"))
+      shiny$actionButton(ns(paste0("add_", key)), tr(paste0("fluid.", key)),
+        icon = shiny$icon("plus")
+      )
     )
   })
   # A step of the experiment form (experiment_form.R); the title is where focus goes.
   shiny$tagList(
-    shiny$h3(id = ns("title"), class = "step-title", "Which instrument fluids did you use?"),
-    lapply(keys, function(key) fluid_slot$ui(ns(key), fluid_names[[key]])),
+    shiny$h3(id = ns("title"), class = "step-title", tr("fluid.title")),
+    lapply(keys, function(key) fluid_slot$ui(ns(key), tr(paste0("fluid.", key)))),
     extras,
     # Hidden once both second lots are open.
     shiny$conditionalPanel(
@@ -51,7 +53,7 @@ ui <- function(id) {
       ns = ns,
       shiny$div(
         class = "add-extra",
-        shiny$span(class = "add-extra-label", "Another lot used in this run? (rare)"),
+        shiny$span(class = "add-extra-label", tr("fluid.another")),
         shiny$div(class = "add-extra-buttons", add_buttons)
       )
     )
@@ -71,6 +73,7 @@ server <- function(id, fluids, experiment_date, changes, add_lot, remove_lot, un
     slot <- function(slot_id, key, other_lot = shiny$reactive(NULL)) {
       fluid_slot$server(slot_id,
         fluid = shiny$reactive(fluid_names[[key]]),
+        label = tr(paste0("fluid.", key)),
         fluids = fluids,
         experiment_date = experiment_date,
         changes = changes,
